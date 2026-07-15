@@ -1,0 +1,8 @@
+{
+  "name": "trecco",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}

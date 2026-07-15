@@ -1,0 +1,7 @@
+{
+  "/cards/page": "app/cards/page.js",
+  "/login/page": "app/login/page.js",
+  "/wallet/page": "app/wallet/page.js",
+  "/marketplace/page": "app/marketplace/page.js",
+  "/admin/cards/page": "app/admin/cards/page.js"
+}

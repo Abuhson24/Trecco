@@ -1,0 +1,402 @@
+// Trecco database schema
+// Encodes the account model, screens, and flows agreed during design.
+// See root README.md "Core domain model" before editing this file.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Identity & cooperative structure ----------
+
+enum Role {
+  MEMBER
+  COOP_ADMIN
+  TREMMA_SUPER_ADMIN // sees all cooperatives, read-mostly
+}
+
+enum Language {
+  ENGLISH
+  HAUSA
+  YORUBA
+  IGBO
+  PIDGIN
+  KISWAHILI
+  FRENCH
+  PORTUGUESE
+  AMHARIC
+  ARABIC
+}
+
+model Cooperative {
+  id             String    @id @default(cuid())
+  name           String
+  country        String
+  focusArea      String? // e.g. "Agribusiness" — platform is not agribusiness-only
+  loanRatePolicy Decimal   @db.Decimal(5, 2) // interest rate %, set by coop admin, read-only to members
+  loanCapPercent Decimal   @default(30.00) @db.Decimal(5, 2) // % of savings a member may borrow
+  committeeSize  Int       @default(5)
+  createdAt      DateTime  @default(now())
+
+  members         Member[]
+  cooperativeAccount CooperativeAccount?
+  inventoryItems  InventoryItem[]
+  marketplaceDemands MarketplaceDemand[]
+}
+
+model Member {
+  id             String    @id @default(cuid())
+  cooperativeId  String
+  cooperative    Cooperative @relation(fields: [cooperativeId], references: [id])
+  role           Role      @default(MEMBER)
+  fullName       String
+  email          String    @unique
+  phone          String    @unique
+  passwordHash   String
+  preferredLanguage Language @default(ENGLISH)
+  joinedAt       DateTime  @default(now())
+
+  personalAccount PersonalAccount?
+  loans           Loan[]
+  loanVotes       LoanVote[]
+  inventoryItems  InventoryItem[]
+  marketplaceOffers MarketplaceOffer[]
+  notifications   Notification[]
+  cardRequests    CardRequest[] @relation("requester")
+  reviewedCardRequests CardRequest[] @relation("reviewer")
+  cards           Card[]
+}
+
+// ---------- Money: personal + cooperative accounts, shared ledger ----------
+
+model PersonalAccount {
+  id                String   @id @default(cuid())
+  memberId          String   @unique
+  member            Member   @relation(fields: [memberId], references: [id])
+  providusAccountNumber String @unique // dedicated virtual account number
+  providusAccountRef String  @unique   // Providus's internal reference for this account
+  balance           Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt         DateTime @default(now())
+
+  transactions      Transaction[]
+}
+
+model CooperativeAccount {
+  id            String      @id @default(cuid())
+  cooperativeId String      @unique
+  cooperative   Cooperative @relation(fields: [cooperativeId], references: [id])
+  providusAccountNumber String @unique
+  balance       Decimal     @default(0) @db.Decimal(14, 2)
+
+  transactions  Transaction[]
+}
+
+enum TransactionType {
+  FUNDING           // external bank/card -> personal account (Providus webhook)
+  MOVE_TO_SAVINGS   // personal account -> cooperative account
+  WITHDRAWAL        // personal account -> external bank
+  LOAN_DISBURSEMENT // cooperative account -> personal account
+  LOAN_REPAYMENT    // personal account -> cooperative account (confirmed only)
+  CARD_ISSUANCE_FEE // personal account -> cooperative account, charged on admin approval of a CardRequest
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// Single shared ledger — every money movement in the app is one row here.
+// Do not create per-feature transaction tables (see README).
+model Transaction {
+  id                String   @id @default(cuid())
+  type              TransactionType
+  status            TransactionStatus @default(PENDING)
+  amount            Decimal  @db.Decimal(14, 2)
+  reference         String   @unique // Providus transaction ref, or internal ref for internal transfers
+  method            String?  // "bank_transfer" | "card" | "internal" — null for internal moves
+
+  personalAccountId String?
+  personalAccount   PersonalAccount? @relation(fields: [personalAccountId], references: [id])
+
+  cooperativeAccountId String?
+  cooperativeAccount   CooperativeAccount? @relation(fields: [cooperativeAccountId], references: [id])
+
+  loanId            String?
+  loan              Loan?    @relation(fields: [loanId], references: [id])
+
+  cardRequestId     String?
+  cardRequest       CardRequest? @relation(fields: [cardRequestId], references: [id])
+
+  createdAt         DateTime @default(now())
+}
+
+// ---------- Loans ----------
+
+enum LoanStatus {
+  SUBMITTED
+  COMMITTEE_VOTING
+  ADMIN_APPROVAL
+  APPROVED
+  REJECTED
+  DISBURSED
+  REPAYING
+  CLOSED
+}
+
+model Loan {
+  id             String   @id @default(cuid())
+  memberId       String
+  member         Member   @relation(fields: [memberId], references: [id])
+  amountRequested Decimal @db.Decimal(14, 2)
+  amountApproved Decimal? @db.Decimal(14, 2)
+  amountRepaid   Decimal  @default(0) @db.Decimal(14, 2) // only CONFIRMED repayments count
+  interestRate   Decimal  @db.Decimal(5, 2) // copied from Cooperative.loanRatePolicy at request time
+  purpose        String
+  repaymentMonths Int
+  status         LoanStatus @default(SUBMITTED)
+  submittedAt    DateTime @default(now())
+  disbursedAt    DateTime?
+
+  votes          LoanVote[]
+  repayments     LoanRepayment[]
+  transactions   Transaction[]
+}
+
+model LoanVote {
+  id       String  @id @default(cuid())
+  loanId   String
+  loan     Loan    @relation(fields: [loanId], references: [id])
+  voterId  String
+  voter    Member  @relation(fields: [voterId], references: [id]) // committee member
+  approve  Boolean
+  votedAt  DateTime @default(now())
+
+  @@unique([loanId, voterId]) // one vote per committee member per loan
+}
+
+enum RepaymentMethod {
+  AUTOMATED  // scheduled deduction from personal account
+  MANUAL     // member-submitted receipt for an external bank transfer
+}
+
+enum RepaymentStatus {
+  PENDING     // manual: awaiting admin confirmation against bank inflow
+  CONFIRMED   // counts toward Loan.amountRepaid
+  REJECTED
+}
+
+model LoanRepayment {
+  id            String   @id @default(cuid())
+  loanId        String
+  loan          Loan     @relation(fields: [loanId], references: [id])
+  method        RepaymentMethod
+  amount        Decimal  @db.Decimal(14, 2)
+  receiptUrl    String?  // S3 URL, manual method only
+  reference     String?  // bank teller/transaction reference, manual method only
+  status        RepaymentStatus @default(PENDING)
+  rejectionReason String?
+  submittedAt   DateTime @default(now())
+  confirmedAt   DateTime?
+  confirmedBy   String?  // admin member id
+}
+
+// ---------- ATM cards: request -> admin approval -> fee -> issuance/delivery ----------
+// Mirrors the wallet money-flow pattern: nothing here mutates PersonalAccount.balance
+// directly except inside a single Prisma $transaction (see CardsService.approve),
+// same rule the wallet ledger follows. Fee deduction on approval writes a normal
+// Transaction row (type CARD_ISSUANCE_FEE), same table every other balance change
+// in the app uses. Card issuance itself (virtual card creation, physical card
+// personalization/dispatch) is a call to Xpress Wallet — see
+// cards/xpress-wallet.client.ts. Every method that touches Xpress Wallet is a stub
+// with a `// TODO(xpress-wallet):` comment until their endpoint docs for card
+// issuance are shared, same convention as apps/api/src/modules/wallet.
+
+enum CardType {
+  VIRTUAL
+  PHYSICAL
+}
+
+enum CardRequestStatus {
+  SUBMITTED          // member submitted the request (+ delivery address if physical)
+  PENDING_APPROVAL    // queued for admin review
+  APPROVED            // admin approved, fee not yet deducted
+  FEE_DEDUCTED        // fee successfully taken from PersonalAccount
+  ISSUING             // Xpress Wallet call in flight (virtual: create card; physical: personalize/print)
+  ISSUED              // virtual card ready, or physical card produced and ready for courier handoff
+  DISPATCHED          // physical only — handed to courier
+  DELIVERED           // physical only — confirmed received by member
+  REJECTED            // admin declined the request, no fee taken
+  FAILED              // Xpress Wallet call failed after fee deduction — needs admin reconciliation/refund
+  CANCELLED           // member cancelled before approval
+}
+
+model CardRequest {
+  id                String   @id @default(cuid())
+  memberId          String
+  member            Member   @relation("requester", fields: [memberId], references: [id])
+  cardType          CardType
+  status            CardRequestStatus @default(SUBMITTED)
+
+  // Delivery address — required for PHYSICAL, ignored for VIRTUAL.
+  // Collected once at request time; admin cannot edit it, only reject and ask
+  // the member to resubmit, so there is always a clean audit trail of what
+  // address a card was actually dispatched to.
+  deliveryFullName  String?
+  deliveryPhone     String?
+  addressLine1      String?
+  addressLine2      String?
+  city              String?
+  state             String?
+  country           String?
+
+  feeAmount         Decimal? @db.Decimal(14, 2) // snapshot of the fee actually charged
+  feeTransactionId  String?  @unique             // set once CARD_ISSUANCE_FEE transaction is created
+
+  reviewedById      String?
+  reviewedBy        Member?  @relation("reviewer", fields: [reviewedById], references: [id])
+  reviewedAt        DateTime?
+  rejectionReason   String?
+
+  courier           String?  // e.g. "GIG Logistics" — physical only
+  trackingReference String?  // physical only
+  dispatchedAt      DateTime?
+  deliveredAt       DateTime?
+
+  xpressWalletCardId String? @unique // Xpress Wallet's card reference, once issued
+
+  submittedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  card              Card?
+  transactions      Transaction[]
+}
+
+enum CardStatus {
+  ACTIVE
+  BLOCKED
+  EXPIRED
+}
+
+// The actual issued card, one row per CardRequest once Xpress Wallet confirms
+// issuance. Kept separate from CardRequest so a member's live cards can be
+// queried without dragging along the whole approval/delivery history.
+model Card {
+  id                  String   @id @default(cuid())
+  memberId            String
+  member              Member   @relation(fields: [memberId], references: [id])
+  cardRequestId       String   @unique
+  cardRequest         CardRequest @relation(fields: [cardRequestId], references: [id])
+  cardType            CardType
+  xpressWalletCardId  String   @unique
+  maskedPan           String   // last 4 only, e.g. "•••• •••• •••• 1501" — never store full PAN
+  expiryMonth         Int
+  expiryYear          Int
+  status              CardStatus @default(ACTIVE)
+  issuedAt            DateTime @default(now())
+}
+
+// ---------- Inventory (member-added, admin oversight only) ----------
+
+enum InventoryCategory {
+  SEEDS
+  FERTILIZER
+  EQUIPMENT
+  PRODUCE
+  OTHER
+}
+
+enum InventoryStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+model InventoryItem {
+  id             String   @id @default(cuid())
+  cooperativeId  String
+  cooperative    Cooperative @relation(fields: [cooperativeId], references: [id])
+  memberId       String   // owner — items are added by members, not admins
+  member         Member   @relation(fields: [memberId], references: [id])
+  name           String
+  category       InventoryCategory
+  quantity       Decimal  @db.Decimal(12, 2)
+  unit           String   // "tonnes", "bags", "units", "tubers"
+  estimatedValue Decimal? @db.Decimal(14, 2)
+  status         InventoryStatus @default(IN_STOCK)
+  createdAt      DateTime @default(now())
+
+  marketplaceOffers MarketplaceOffer[]
+}
+
+// ---------- Marketplace: offtaker demand <-> supplier offers ----------
+
+enum DemandStatus {
+  OPEN
+  MATCHED
+  CLOSED
+  EXPIRED
+}
+
+model Offtaker {
+  id           String   @id @default(cuid())
+  companyName  String
+  contactEmail String   @unique
+  contactPhone String
+  passwordHash String
+  verified     Boolean  @default(false)
+
+  demands      MarketplaceDemand[]
+}
+
+model MarketplaceDemand {
+  id            String   @id @default(cuid())
+  offtakerId    String
+  offtaker      Offtaker @relation(fields: [offtakerId], references: [id])
+  cooperativeId String?  // null if open to any cooperative on the platform
+  cooperative   Cooperative? @relation(fields: [cooperativeId], references: [id])
+  productName   String
+  quantity      Decimal  @db.Decimal(12, 2)
+  unit          String
+  pricePerUnit  Decimal  @db.Decimal(14, 2)
+  deadline      DateTime?
+  status        DemandStatus @default(OPEN)
+  createdAt     DateTime @default(now())
+
+  offers        MarketplaceOffer[]
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model MarketplaceOffer {
+  id              String   @id @default(cuid())
+  demandId        String
+  demand          MarketplaceDemand @relation(fields: [demandId], references: [id])
+  memberId        String
+  member          Member   @relation(fields: [memberId], references: [id])
+  inventoryItemId String?
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  quantityOffered Decimal  @db.Decimal(12, 2)
+  status          OfferStatus @default(PENDING)
+  submittedAt     DateTime @default(now())
+}
+
+// ---------- Notifications (in-app; SMS/push provider TBD) ----------
+
+model Notification {
+  id        String   @id @default(cuid())
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
