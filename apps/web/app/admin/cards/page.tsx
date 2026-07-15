@@ -1,18 +1,18 @@
 'use client';
-
-// Admin queue for card requests. Approve = deduct fee + trigger Xpress
-// Wallet issuance (handled server-side in one call, see CardsService.approve).
-// Dispatch/Delivered are separate steps for physical cards only, entered
-// manually by the admin once a courier has the card (see README "What's
-// stubbed" — Xpress Wallet fulfillment webhooks can replace this manual step
-// later without changing the CardRequestStatus state machine).
-
+// Admin-only: review and approve pending virtual card requests.
 import { useEffect, useState } from 'react';
-import type { CardRequest } from '@trecco/shared-types';
 import { useRouter } from 'next/navigation';
-import { requireAdmin } from '../../../lib/auth';
+import { requireAuth } from '../../../lib/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+
+interface PendingCard {
+  id: string;
+  memberName: string;
+  memberId: string;
+  requestedAt: string;
+  status: string;
+}
 
 async function api(path: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('trecco_token') : null;
@@ -28,121 +28,92 @@ async function api(path: string, options: RequestInit = {}) {
   return res.json();
 }
 
-export default function AdminCardsPage() {
+export default function PendingCardsPage() {
   const router = useRouter();
-  type AdminRow = CardRequest & { member: { fullName: string; email: string; phone: string } };
-  const [pending, setPending] = useState<AdminRow[]>([]);
-  const [awaitingDispatch, setAwaitingDispatch] = useState<AdminRow[]>([]);
+  const [cards, setCards] = useState<PendingCard[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   async function load() {
     try {
-      const [p, d] = await Promise.all([
-        api('/cards/admin/requests/pending'),
-        api('/cards/admin/requests/awaiting-dispatch'),
-      ]);
-      setPending(p);
-      setAwaitingDispatch(d);
+      setCards(await api('/cards/pending'));
+      setError(null);
     } catch (e: any) {
       setError(e.message);
     }
   }
 
   useEffect(() => {
-    if (!requireAdmin(router)) return;
+    if (!requireAuth(router)) return;
     load();
   }, []);
 
-  async function act(id: string, action: 'approve' | 'reject', reason?: string) {
-    setBusyId(id);
+  async function approveCard(cardId: string) {
+    setApprovingId(cardId);
     setError(null);
     try {
-      if (action === 'approve') {
-        await api(`/cards/admin/requests/${id}/approve`, { method: 'POST' });
-      } else {
-        await api(`/cards/admin/requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
-      }
-      await load();
+      await api(`/cards/${cardId}/approve`, { method: 'POST' });
+      setCards((prev) => prev.filter((c) => c.id !== cardId));
     } catch (e: any) {
       setError(e.message);
     } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function dispatch(id: string) {
-    const courier = window.prompt('Courier name (e.g. GIG Logistics)');
-    const trackingReference = courier ? window.prompt('Tracking reference') : null;
-    if (!courier || !trackingReference) return;
-    setBusyId(id);
-    try {
-      await api(`/cards/admin/requests/${id}/dispatch`, { method: 'POST', body: JSON.stringify({ courier, trackingReference }) });
-      await load();
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setBusyId(null);
+      setApprovingId(null);
     }
   }
 
   return (
-    <main>
-      <h1>Card requests — pending approval</h1>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <table>
-        <thead>
-          <tr><th>Member</th><th>Type</th><th>Delivery</th><th>Submitted</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-          {pending.map((r) => (
-            <tr key={r.id}>
-              <td>{r.member.fullName}<br /><small>{r.member.email}</small></td>
-              <td>{r.cardType}</td>
-              <td>
-                {r.cardType === 'PHYSICAL'
-                  ? `${r.addressLine1}, ${r.city}, ${r.state}, ${r.country}`
-                  : '—'}
-              </td>
-              <td>{new Date(r.submittedAt).toLocaleString()}</td>
-              <td>
-                <button disabled={busyId === r.id} onClick={() => act(r.id, 'approve')}>
-                  Approve &amp; deduct fee
-                </button>
-                <button
-                  disabled={busyId === r.id}
-                  onClick={() => {
-                    const reason = window.prompt('Rejection reason');
-                    if (reason) act(r.id, 'reject', reason);
-                  }}
-                >
-                  Reject
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
+      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Pending virtual cards</h1>
+      <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 20 }}>
+        Card requests awaiting admin approval.
+      </p>
 
-      <h1>Physical cards — ready to dispatch</h1>
-      <table>
-        <thead>
-          <tr><th>Member</th><th>Delivery address</th><th>Actions</th></tr>
-        </thead>
-        <tbody>
-          {awaitingDispatch.map((r) => (
-            <tr key={r.id}>
-              <td>{r.member.fullName}</td>
-              <td>{r.addressLine1}, {r.city}, {r.state}, {r.country}</td>
-              <td>
-                <button disabled={busyId === r.id} onClick={() => dispatch(r.id)}>
-                  Mark dispatched
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {error && <p style={{ color: '#e5484d', fontSize: 13, marginBottom: 16 }}>{error}</p>}
+
+      {cards.length === 0 && !error && (
+        <p style={{ color: '#9a9a9f', fontSize: 13 }}>No pending card requests.</p>
+      )}
+
+      {cards.map((card) => (
+        <div
+          key={card.id}
+          style={{
+            background: '#1f1f23',
+            border: '1px solid #2a2a2e',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 12,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{card.memberName}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
+              Requested {new Date(card.requestedAt).toLocaleDateString()}
+            </p>
+          </div>
+          <button
+            onClick={() => approveCard(card.id)}
+            disabled={approvingId === card.id}
+            style={{
+              background: '#8a1414',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '0 16px',
+              height: 34,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: approvingId === card.id ? 'default' : 'pointer',
+              opacity: approvingId === card.id ? 0.7 : 1,
+            }}
+          >
+            {approvingId === card.id ? 'Approving…' : 'Approve'}
+          </button>
+        </div>
+      ))}
     </main>
   );
 }
