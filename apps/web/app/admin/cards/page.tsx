@@ -1,5 +1,5 @@
 'use client';
-// Admin-only: review and approve pending virtual card requests.
+// Admin-only: review, approve, or reject pending virtual card requests.
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { requireAuth } from '../../../lib/auth';
@@ -32,11 +32,13 @@ export default function PendingCardsPage() {
   const router = useRouter();
   const [cards, setCards] = useState<PendingCard[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [reasons, setReasons] = useState<Record<string, string>>({});
 
   async function load() {
     try {
-      setCards(await api('/cards/pending'));
+      setCards(await api('/cards/admin/requests/pending'));
       setError(null);
     } catch (e: any) {
       setError(e.message);
@@ -49,15 +51,37 @@ export default function PendingCardsPage() {
   }, []);
 
   async function approveCard(cardId: string) {
-    setApprovingId(cardId);
+    setBusyId(cardId);
     setError(null);
     try {
-      await api(`/cards/${cardId}/approve`, { method: 'POST' });
+      await api(`/cards/admin/requests/${cardId}/approve`, { method: 'POST' });
       setCards((prev) => prev.filter((c) => c.id !== cardId));
     } catch (e: any) {
       setError(e.message);
     } finally {
-      setApprovingId(null);
+      setBusyId(null);
+    }
+  }
+
+  async function rejectCard(cardId: string) {
+    const reason = reasons[cardId]?.trim();
+    if (!reason) {
+      setError('Enter a reason for rejection');
+      return;
+    }
+    setBusyId(cardId);
+    setError(null);
+    try {
+      await api(`/cards/admin/requests/${cardId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      });
+      setCards((prev) => prev.filter((c) => c.id !== cardId));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusyId(null);
+      setRejectingId(null);
     }
   }
 
@@ -83,35 +107,89 @@ export default function PendingCardsPage() {
             borderRadius: 12,
             padding: 16,
             marginBottom: 12,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
           }}
         >
-          <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{card.memberName}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
-              Requested {new Date(card.requestedAt).toLocaleDateString()}
-            </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{card.memberName}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
+                Requested {new Date(card.requestedAt).toLocaleDateString()}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setRejectingId(rejectingId === card.id ? null : card.id)}
+                style={{
+                  background: 'transparent',
+                  color: '#e5484d',
+                  border: '1px solid #4a2a2a',
+                  borderRadius: 8,
+                  padding: '0 14px',
+                  height: 34,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                Reject
+              </button>
+              <button
+                onClick={() => approveCard(card.id)}
+                disabled={busyId === card.id}
+                style={{
+                  background: '#8a1414',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0 16px',
+                  height: 34,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: busyId === card.id ? 'default' : 'pointer',
+                  opacity: busyId === card.id ? 0.7 : 1,
+                }}
+              >
+                {busyId === card.id ? 'Working…' : 'Approve'}
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => approveCard(card.id)}
-            disabled={approvingId === card.id}
-            style={{
-              background: '#8a1414',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '0 16px',
-              height: 34,
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: approvingId === card.id ? 'default' : 'pointer',
-              opacity: approvingId === card.id ? 0.7 : 1,
-            }}
-          >
-            {approvingId === card.id ? 'Approving…' : 'Approve'}
-          </button>
+
+          {rejectingId === card.id && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <input
+                type="text"
+                placeholder="Reason for rejection"
+                value={reasons[card.id] ?? ''}
+                onChange={(e) => setReasons({ ...reasons, [card.id]: e.target.value })}
+                style={{
+                  flex: 1,
+                  height: 34,
+                  borderRadius: 8,
+                  border: '1px solid #2a2a2e',
+                  background: '#0b0b0d',
+                  color: '#f5f5f5',
+                  padding: '0 10px',
+                }}
+              />
+              <button
+                onClick={() => rejectCard(card.id)}
+                disabled={busyId === card.id}
+                style={{
+                  background: '#e5484d',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0 16px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  cursor: busyId === card.id ? 'default' : 'pointer',
+                  opacity: busyId === card.id ? 0.7 : 1,
+                }}
+              >
+                Confirm reject
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </main>
