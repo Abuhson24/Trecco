@@ -15,15 +15,23 @@ import { getToken, getRole, clearSession } from '../lib/auth';
 
 const LINKS = [
   { href: '/wallet', label: 'Wallet' },
+  { href: '/loans', label: 'Loans' },
   { href: '/cards', label: 'Cards' },
   { href: '/marketplace', label: 'Marketplace' },
   { href: '/inventory', label: 'Inventory' },
 ];
 
+// Visible to every member, not just admins -- the backend lets any member
+// with isCommitteeMember=true vote on loans regardless of role. The page
+// itself lives at /admin/loans (shared with the admin loan-management UI)
+// and degrades gracefully for non-admins -- see loadAll() in that page.
+const COMMITTEE_LINK = { href: '/admin/loans', label: 'Committee' };
+
 const ADMIN_LINKS = [
   { href: '/admin/cards', label: 'Admin - Cards' },
   { href: '/admin/inventory', label: 'Admin - Inventory' },
   { href: '/admin/marketplace', label: 'Admin - Marketplace' },
+  { href: '/admin/loans', label: 'Admin - Loans' },
 ];
 
 export default function Nav() {
@@ -42,7 +50,7 @@ export default function Nav() {
   if (!mounted || pathname === '/login' || !hasToken) return null;
 
   const isAdmin = role === 'COOP_ADMIN' || role === 'TREMMA_SUPER_ADMIN';
-  const links = isAdmin ? [...LINKS, ...ADMIN_LINKS] : LINKS;
+  const links = isAdmin ? [...LINKS, ...ADMIN_LINKS] : [...LINKS, COMMITTEE_LINK];
 
   function logout() {
     clearSession();
