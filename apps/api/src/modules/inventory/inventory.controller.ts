@@ -1,8 +1,10 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { InventoryService } from './inventory.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { inventoryImageMulterOptions } from '../../common/config/multer.config';
 
 @Controller('inventory')
 export class InventoryController {
@@ -34,6 +36,21 @@ export class InventoryController {
   @Delete(':id')
   async deleteItem(@Req() req: any, @Param('id') id: string) {
     return this.inventory.deleteItem(req.user.memberId, id);
+  }
+
+  // Member uploads/replaces the photo for their own item. multer validates
+  // MIME type + extension + size before this handler even runs (see
+  // multer.config.ts) — file is already safely on disk with a random
+  // filename by the time we get here.
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/image')
+  @UseInterceptors(FileInterceptor('image', inventoryImageMulterOptions))
+  async uploadImage(@Req() req: any, @Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new Error('No file uploaded — field name must be "image"');
+    }
+    const imageUrl = `/uploads/inventory/${file.filename}`;
+    return this.inventory.attachImage(req.user.memberId, id, imageUrl);
   }
 
   // Admin-only: feed of everything members have added, across the coop.
