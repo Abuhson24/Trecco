@@ -63,6 +63,30 @@ export class MarketplaceService {
     });
   }
 
+  // Offtaker's own demands across every status (not just OPEN) — the
+  // member-facing listOpenDemands only shows OPEN ones, but an offtaker
+  // needs to see their MATCHED/closed demands too to manage them.
+  async listMyDemands(offtakerId: string) {
+    return this.prisma.marketplaceDemand.findMany({
+      where: { offtakerId },
+      include: { offers: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // Admin view — every demand across every offtaker, every status, with
+  // offers and offer-submitter details included. This is what the admin
+  // marketplace management page lists to accept/decline/fulfill against.
+  async listAllDemandsForAdmin() {
+    return this.prisma.marketplaceDemand.findMany({
+      include: {
+        offtaker: { select: { id: true, companyName: true, contactEmail: true, contactPhone: true, verified: true } },
+        offers: { include: { member: { select: { id: true, fullName: true, phone: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   // A member offering to supply a demand, optionally linked to real
   // inventory they've already listed.
   async submitOffer(memberId: string, demandId: string, input: { quantityOffered: number; inventoryItemId?: string }) {
@@ -92,6 +116,18 @@ export class MarketplaceService {
     });
   }
 
+  // Member's own offers across every demand they've offered against, with
+  // the demand details attached — this is what lets a member check back
+  // on what they submitted and its live status, instead of only seeing a
+  // one-time "submitted" confirmation that disappears on refresh.
+  async listMyOffers(memberId: string) {
+    return this.prisma.marketplaceOffer.findMany({
+      where: { memberId },
+      include: { demand: { include: { offtaker: { select: { companyName: true } } } } },
+      orderBy: { submittedAt: 'desc' },
+    });
+  }
+
   // Accepting one offer declines every other pending offer on the same
   // demand and marks the demand MATCHED — a demand can only be fulfilled once.
   async acceptOffer(offerId: string) {
@@ -116,5 +152,86 @@ export class MarketplaceService {
     if (!offer) throw new NotFoundException('Offer not found');
     if (offer.status !== 'PENDING') throw new BadRequestException('This offer has already been decided');
     return this.prisma.marketplaceOffer.update({ where: { id: offerId }, data: { status: 'DECLINED' } });
+  }
+
+  // Offtaker edits their own demand. Ownership is enforced here — the
+  // offtakerId comes from the verified token (OfftakerAuthGuard), never
+  // trusted from the request body.
+  async updateDemandAsOfftaker(offtakerId: string, demandId: string, input: Partial<DemandDetails>) {
+    const demand = await this.prisma.marketplaceDemand.findUnique({ where: { id: demandId } });
+    if (!demand) throw new NotFoundException('Demand not found');
+    if (demand.offtakerId !== offtakerId) throw new ForbiddenException('Not your demand');
+
+    return this.prisma.marketplaceDemand.update({
+      where: { id: demandId },
+      data: {
+        productName: input.productName ?? demand.productName,
+        quantity: input.quantity ?? demand.quantity,
+        unit: input.unit ?? demand.unit,
+        pricePerUnit: input.pricePerUnit ?? demand.pricePerUnit,
+        deadline: input.deadline ? new Date(input.deadline) : demand.deadline,
+      },
+    });
+  }
+
+  // Blocked if any offers have been submitted against this demand — an
+  // offtaker can't make a member's already-submitted offer vanish by
+  // deleting the demand it was submitted against.
+  async deleteDemandAsOfftaker(offtakerId: string, demandId: string) {
+    const demand = await this.prisma.marketplaceDemand.findUnique({
+      where: { id: demandId },
+      include: { offers: true },
+    });
+    if (!demand) throw new NotFoundException('Demand not found');
+    if (demand.offtakerId !== offtakerId) throw new ForbiddenException('Not your demand');
+    if (demand.offers.length > 0) {
+      throw new BadRequestException('Cannot delete a demand that already has offers submitted against it');
+    }
+    return this.prisma.marketplaceDemand.delete({ where: { id: demandId } });
+  }
+
+  async attachDemandImage(offtakerId: string, demandId: string, imageUrl: string) {
+    const demand = await this.prisma.marketplaceDemand.findUnique({ where: { id: demandId } });
+    if (!demand) throw new NotFoundException('Demand not found');
+    if (demand.offtakerId !== offtakerId) throw new ForbiddenException('Not your demand');
+    return this.prisma.marketplaceDemand.update({ where: { id: demandId }, data: { imageUrl } });
+  }
+
+  // Marks real supply as delivered against an already-accepted offer. This
+  // is a separate step from acceptOffer — accepting just means "you're the
+  // chosen supplier," fulfilling means the goods actually moved. The offer
+  // is never deleted; FULFILLED is a terminal status so the record (and
+  // audit trail) survives. If the offer was linked to a real inventory
+  // item, that item's quantity is decremented in the same transaction so
+  // inventory stays accurate once stock has actually left the farmer.
+  async fulfillOffer(offerId: string) {
+    const offer = await this.prisma.marketplaceOffer.findUnique({ where: { id: offerId } });
+    if (!offer) throw new NotFoundException('Offer not found');
+    if (offer.status !== 'ACCEPTED') {
+      throw new BadRequestException('Only an accepted offer can be marked as fulfilled');
+    }
+
+    const ops: any[] = [
+      this.prisma.marketplaceOffer.update({ where: { id: offerId }, data: { status: 'FULFILLED' } }),
+    ];
+
+    if (offer.inventoryItemId) {
+      const item = await this.prisma.inventoryItem.findUnique({ where: { id: offer.inventoryItemId } });
+      if (item) {
+        const remaining = Number(item.quantity) - Number(offer.quantityOffered);
+        ops.push(
+          this.prisma.inventoryItem.update({
+            where: { id: offer.inventoryItemId },
+            data: {
+              quantity: remaining > 0 ? remaining : 0,
+              status: remaining <= 0 ? 'OUT_OF_STOCK' : item.status,
+            },
+          }),
+        );
+      }
+    }
+
+    await this.prisma.$transaction(ops);
+    return this.prisma.marketplaceOffer.findUnique({ where: { id: offerId } });
   }
 }

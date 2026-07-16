@@ -23,6 +23,7 @@ const LINKS = [
 const ADMIN_LINKS = [
   { href: '/admin/cards', label: 'Admin - Cards' },
   { href: '/admin/inventory', label: 'Admin - Inventory' },
+  { href: '/admin/marketplace', label: 'Admin - Marketplace' },
 ];
 
 export default function Nav() {

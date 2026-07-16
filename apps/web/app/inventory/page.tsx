@@ -29,6 +29,14 @@ interface InventoryItem {
   createdAt: string;
 }
 
+interface Demand {
+  id: string;
+  productName: string;
+  quantity: string;
+  unit: string;
+  status: string;
+}
+
 async function api(path: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('trecco_token') : null;
   const res = await fetch(`${API_BASE}${path}`, {
@@ -68,6 +76,13 @@ export default function InventoryPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [member, setMember] = useState<{ fullName: string; address: string | null; phone: string; email: string } | null>(null);
+  const [demands, setDemands] = useState<Demand[]>([]);
+  const [listingItemId, setListingItemId] = useState<string | null>(null);
+  const [listingDemandId, setListingDemandId] = useState('');
+  const [listingQuantity, setListingQuantity] = useState('');
+  const [listingBusy, setListingBusy] = useState(false);
   const [form, setForm] = useState({
     name: '',
     category: 'PRODUCE',
@@ -94,13 +109,77 @@ export default function InventoryPage() {
     }
   }
 
+  async function loadMember() {
+    try {
+      const me = await api('/auth/me');
+      setMember({ fullName: me.fullName, address: me.address, phone: me.phone, email: me.email });
+    } catch (e) {
+      // non-fatal — print header just won't show member details if this fails
+    }
+  }
+
+  async function loadDemands() {
+    try {
+      const open = await api('/marketplace/demands');
+      setDemands(open.filter((d: Demand) => d.status === 'OPEN'));
+    } catch (e) {
+      // non-fatal — listing picker just won't have options if this fails
+    }
+  }
+
   useEffect(() => {
     if (!requireAuth(router)) return;
     load();
+    loadMember();
+    loadDemands();
   }, []);
 
   function update(field: string, value: any) {
     setForm({ ...form, [field]: value });
+  }
+
+  function editItem(item: InventoryItem) {
+    setEditingId(item.id);
+    setForm({
+      name: item.name,
+      category: item.category,
+      quantity: String(item.quantity),
+      unit: item.unit,
+      variety: item.variety ?? '',
+      growingMethod: item.growingMethod ?? 'CONVENTIONAL',
+      plantingDate: item.plantingDate ? item.plantingDate.slice(0, 10) : '',
+      harvestDate: item.harvestDate ? item.harvestDate.slice(0, 10) : '',
+      askingPriceCurrency: item.askingPriceCurrency ?? 'NGN',
+      askingPriceAmount: item.askingPriceAmount ?? '',
+      negotiable: item.negotiable,
+      bulkDiscountAvailable: item.bulkDiscountAvailable,
+      minSellingPriceCurrency: item.minSellingPriceCurrency ?? 'NGN',
+      minSellingPriceAmount: item.minSellingPriceAmount ?? '',
+    });
+    setShowForm(true);
+  }
+
+  async function submitListing(itemId: string) {
+    if (!listingDemandId || !listingQuantity || Number(listingQuantity) <= 0) {
+      setError('Choose a demand and enter a valid quantity');
+      return;
+    }
+    setListingBusy(true);
+    setError(null);
+    try {
+      await api(`/inventory/${itemId}/list-to-marketplace/${listingDemandId}`, {
+        method: 'POST',
+        body: JSON.stringify({ quantityOffered: Number(listingQuantity) }),
+      });
+      setListingItemId(null);
+      setListingDemandId('');
+      setListingQuantity('');
+      load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setListingBusy(false);
+    }
   }
 
   async function submitItem() {
@@ -111,31 +190,34 @@ export default function InventoryPage() {
     setSaving(true);
     setError(null);
     try {
-      await api('/inventory', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: form.name,
-          category: form.category,
-          quantity: Number(form.quantity),
-          unit: form.unit,
-          variety: form.variety || null,
-          growingMethod: form.growingMethod,
-          plantingDate: form.plantingDate || null,
-          harvestDate: form.harvestDate || null,
-          askingPriceCurrency: form.askingPriceCurrency,
-          askingPriceAmount: form.askingPriceAmount ? Number(form.askingPriceAmount) : null,
-          negotiable: form.negotiable,
-          bulkDiscountAvailable: form.bulkDiscountAvailable,
-          minSellingPriceCurrency: form.minSellingPriceCurrency,
-          minSellingPriceAmount: form.minSellingPriceAmount ? Number(form.minSellingPriceAmount) : null,
-        }),
-      });
+      const payload = {
+        name: form.name,
+        category: form.category,
+        quantity: Number(form.quantity),
+        unit: form.unit,
+        variety: form.variety || null,
+        growingMethod: form.growingMethod,
+        plantingDate: form.plantingDate || null,
+        harvestDate: form.harvestDate || null,
+        askingPriceCurrency: form.askingPriceCurrency,
+        askingPriceAmount: form.askingPriceAmount ? Number(form.askingPriceAmount) : null,
+        negotiable: form.negotiable,
+        bulkDiscountAvailable: form.bulkDiscountAvailable,
+        minSellingPriceCurrency: form.minSellingPriceCurrency,
+        minSellingPriceAmount: form.minSellingPriceAmount ? Number(form.minSellingPriceAmount) : null,
+      };
+      if (editingId) {
+        await api(`/inventory/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      } else {
+        await api('/inventory', { method: 'POST', body: JSON.stringify(payload) });
+      }
       setForm({
         name: '', category: 'PRODUCE', quantity: '', unit: 'bags', variety: '',
         growingMethod: 'CONVENTIONAL', plantingDate: '', harvestDate: '',
         askingPriceCurrency: 'NGN', askingPriceAmount: '', negotiable: false,
         bulkDiscountAvailable: false, minSellingPriceCurrency: 'NGN', minSellingPriceAmount: '',
       });
+      setEditingId(null);
       setShowForm(false);
       load();
     } catch (e: any) {
@@ -194,14 +276,58 @@ export default function InventoryPage() {
 
   return (
     <main style={{ maxWidth: 760, margin: '40px auto', padding: '0 16px' }}>
+      <style jsx global>{`
+        @media print {
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          body { background: #fff !important; color: #000 !important; }
+          nav { display: none !important; }
+        }
+      `}</style>
+
+      <div className="print-only" style={{ display: 'none', marginBottom: 24, paddingBottom: 16, borderBottom: '2px solid #8a1414' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+          <svg width="40" height="40" viewBox="0 0 100 100">
+            <rect x="10" y="10" width="80" height="80" rx="14" fill="#8a1414" />
+            <circle cx="58" cy="50" r="26" fill="#000" />
+            <path d="M50 20 C50 20, 80 15, 78 45 C76 60, 60 55, 58 48 C56 42, 50 20, 50 20 Z" fill="#000" />
+            <line x1="58" y1="48" x2="58" y2="75" stroke="#8a1414" strokeWidth="4" />
+          </svg>
+          <div>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#000' }}>TRECCO</p>
+            <p style={{ margin: 0, fontSize: 11, color: '#555' }}>Official Inventory Report</p>
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: '#000', lineHeight: 1.6 }}>
+          <p style={{ margin: 0 }}><strong>Farmer:</strong> {member?.fullName ?? '—'}</p>
+          <p style={{ margin: 0 }}><strong>Address:</strong> {member?.address ?? 'Not provided'}</p>
+          <p style={{ margin: 0 }}><strong>Phone:</strong> {member?.phone ?? '—'}</p>
+          <p style={{ margin: 0 }}><strong>Email:</strong> {member?.email ?? '—'}</p>
+          <p style={{ margin: '4px 0 0' }}><strong>Date printed:</strong> {new Date().toLocaleDateString()}</p>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>My inventory</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-        >
-          {showForm ? 'Cancel' : '+ Add produce'}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => window.print()}
+            className="no-print"
+            style={{ background: 'transparent', color: '#9a9a9f', border: '1px solid #2a2a2e', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+          >
+            Print
+          </button>
+          <button
+            onClick={() => {
+              if (showForm) setEditingId(null);
+              setShowForm(!showForm);
+            }}
+            className="no-print"
+            style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+          >
+            {showForm ? 'Cancel' : '+ Add produce'}
+          </button>
+        </div>
       </div>
       <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 20 }}>
         Your own stock and produce. The admin sees a live feed of what you add.
@@ -304,7 +430,7 @@ export default function InventoryPage() {
             disabled={saving}
             style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
           >
-            {saving ? 'Saving…' : 'Save item'}
+            {saving ? 'Saving…' : editingId ? 'Save changes' : 'Save item'}
           </button>
         </div>
       )}
@@ -332,6 +458,9 @@ export default function InventoryPage() {
               <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
                 {item.category} · {item.quantity} {item.unit}{item.growingMethod ? ` · ${item.growingMethod}` : ''}
               </p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b6b6b' }}>
+                Added {new Date(item.createdAt).toLocaleDateString()}
+              </p>
             </div>
             <span style={{ fontSize: 12, color: statusColor(item.status) }}>{item.status.replace('_', ' ')}</span>
           </div>
@@ -346,7 +475,7 @@ export default function InventoryPage() {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid #2a2a2e' }}>
+          <div className="no-print" style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid #2a2a2e' }}>
             <label style={{ fontSize: 12, color: '#9a9a9f', cursor: 'pointer' }}>
               {uploadingId === item.id ? 'Uploading…' : item.imageUrl ? 'Replace photo' : '+ Add photo'}
               <input
@@ -361,6 +490,38 @@ export default function InventoryPage() {
                 }}
               />
             </label>
+            <button
+              onClick={() => editItem(item)}
+              style={{
+                background: 'transparent',
+                border: '1px solid #2a2a2e',
+                color: '#9a9a9f',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => {
+                setListingItemId(listingItemId === item.id ? null : item.id);
+                setListingDemandId('');
+                setListingQuantity('');
+              }}
+              style={{
+                background: 'transparent',
+                border: '1px solid #2a2a2e',
+                color: '#9a9a9f',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              List to marketplace
+            </button>
             <button
               onClick={() => deleteItemHandler(item.id)}
               disabled={deletingId === item.id}
@@ -379,6 +540,48 @@ export default function InventoryPage() {
               {deletingId === item.id ? 'Deleting…' : 'Delete'}
             </button>
           </div>
+
+          {listingItemId === item.id && (
+            <div className="no-print" style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a2e', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <select
+                value={listingDemandId}
+                onChange={(e) => setListingDemandId(e.target.value)}
+                style={{ ...inputStyle, flex: 2 }}
+              >
+                <option value="">Select an open demand…</option>
+                {demands.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.productName} — {d.quantity} {d.unit} needed
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                placeholder="Qty to offer"
+                value={listingQuantity}
+                onChange={(e) => setListingQuantity(e.target.value)}
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button
+                onClick={() => submitListing(item.id)}
+                disabled={listingBusy}
+                style={{
+                  background: '#8a1414',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '0 14px',
+                  height: 34,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: listingBusy ? 'default' : 'pointer',
+                  opacity: listingBusy ? 0.7 : 1,
+                }}
+              >
+                {listingBusy ? 'Sending…' : 'Confirm'}
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </main>
