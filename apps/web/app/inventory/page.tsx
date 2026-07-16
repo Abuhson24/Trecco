@@ -15,6 +15,16 @@ interface InventoryItem {
   unit: string;
   estimatedValue: string | null;
   status: string;
+  variety: string | null;
+  growingMethod: string | null;
+  plantingDate: string | null;
+  harvestDate: string | null;
+  askingPriceCurrency: string | null;
+  askingPriceAmount: string | null;
+  negotiable: boolean;
+  bulkDiscountAvailable: boolean;
+  minSellingPriceCurrency: string | null;
+  minSellingPriceAmount: string | null;
   createdAt: string;
 }
 
@@ -32,7 +42,22 @@ async function api(path: string, options: RequestInit = {}) {
   return res.json();
 }
 
-const CATEGORIES = ['SEEDS', 'FERTILIZER', 'EQUIPMENT', 'PRODUCE', 'OTHER'];
+const CATEGORIES = ['SEEDS', 'FERTILIZER', 'EQUIPMENT', 'PRODUCE', 'GRAIN', 'OTHER'];
+const UNITS = ['tonnes', 'bags', 'litres', 'other'];
+const GROWING_METHODS = ['ORGANIC', 'CONVENTIONAL'];
+const CURRENCIES = ['NGN', 'USD', 'GBP', 'EUR', 'JPY', 'CNY', 'AED'];
+
+const inputStyle = {
+  height: 34,
+  borderRadius: 8,
+  border: '1px solid #2a2a2e',
+  background: '#0b0b0d',
+  color: '#f5f5f5',
+  padding: '0 10px',
+  fontSize: 13,
+} as const;
+
+const labelStyle = { fontSize: 11, color: '#6b6b6b', display: 'block', marginBottom: 4 } as const;
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -44,8 +69,17 @@ export default function InventoryPage() {
     name: '',
     category: 'PRODUCE',
     quantity: '',
-    unit: '',
-    estimatedValue: '',
+    unit: 'bags',
+    variety: '',
+    growingMethod: 'CONVENTIONAL',
+    plantingDate: '',
+    harvestDate: '',
+    askingPriceCurrency: 'NGN',
+    askingPriceAmount: '',
+    negotiable: false,
+    bulkDiscountAvailable: false,
+    minSellingPriceCurrency: 'NGN',
+    minSellingPriceAmount: '',
   });
 
   async function load() {
@@ -62,6 +96,10 @@ export default function InventoryPage() {
     load();
   }, []);
 
+  function update(field: string, value: any) {
+    setForm({ ...form, [field]: value });
+  }
+
   async function submitItem() {
     if (!form.name || !form.quantity || !form.unit) {
       setError('Name, quantity, and unit are required');
@@ -77,10 +115,24 @@ export default function InventoryPage() {
           category: form.category,
           quantity: Number(form.quantity),
           unit: form.unit,
-          estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : null,
+          variety: form.variety || null,
+          growingMethod: form.growingMethod,
+          plantingDate: form.plantingDate || null,
+          harvestDate: form.harvestDate || null,
+          askingPriceCurrency: form.askingPriceCurrency,
+          askingPriceAmount: form.askingPriceAmount ? Number(form.askingPriceAmount) : null,
+          negotiable: form.negotiable,
+          bulkDiscountAvailable: form.bulkDiscountAvailable,
+          minSellingPriceCurrency: form.minSellingPriceCurrency,
+          minSellingPriceAmount: form.minSellingPriceAmount ? Number(form.minSellingPriceAmount) : null,
         }),
       });
-      setForm({ name: '', category: 'PRODUCE', quantity: '', unit: '', estimatedValue: '' });
+      setForm({
+        name: '', category: 'PRODUCE', quantity: '', unit: 'bags', variety: '',
+        growingMethod: 'CONVENTIONAL', plantingDate: '', harvestDate: '',
+        askingPriceCurrency: 'NGN', askingPriceAmount: '', negotiable: false,
+        bulkDiscountAvailable: false, minSellingPriceCurrency: 'NGN', minSellingPriceAmount: '',
+      });
       setShowForm(false);
       load();
     } catch (e: any) {
@@ -96,22 +148,18 @@ export default function InventoryPage() {
     return '#34c471';
   }
 
+  function fmtPrice(currency: string | null, amount: string | null) {
+    if (!amount) return null;
+    return `${currency ?? 'NGN'} ${Number(amount).toLocaleString()}`;
+  }
+
   return (
-    <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
+    <main style={{ maxWidth: 760, margin: '40px auto', padding: '0 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>My inventory</h1>
         <button
           onClick={() => setShowForm(!showForm)}
-          style={{
-            background: '#8a1414',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '8px 16px',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}
+          style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
         >
           {showForm ? 'Cancel' : '+ Add produce'}
         </button>
@@ -124,61 +172,98 @@ export default function InventoryPage() {
 
       {showForm && (
         <div style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <input
-              type="text"
-              placeholder="Item name (e.g. Maize)"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              style={{ flex: 2, height: 34, borderRadius: 8, border: '1px solid #2a2a2e', background: '#0b0b0d', color: '#f5f5f5', padding: '0 10px' }}
-            />
-            <select
-              value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
-              style={{ flex: 1, height: 34, borderRadius: 8, border: '1px solid #2a2a2e', background: '#0b0b0d', color: '#f5f5f5', padding: '0 10px' }}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 2 }}>
+              <label style={labelStyle}>Item name</label>
+              <input type="text" placeholder="Maize" value={form.name} onChange={(e) => update('name', e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Category</label>
+              <select value={form.category} onChange={(e) => update('category', e.target.value)} style={{ ...inputStyle, width: '100%' }}>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <input
-              type="number"
-              placeholder="Quantity"
-              value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-              style={{ flex: 1, height: 34, borderRadius: 8, border: '1px solid #2a2a2e', background: '#0b0b0d', color: '#f5f5f5', padding: '0 10px' }}
-            />
-            <input
-              type="text"
-              placeholder="Unit (e.g. bags)"
-              value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value })}
-              style={{ flex: 1, height: 34, borderRadius: 8, border: '1px solid #2a2a2e', background: '#0b0b0d', color: '#f5f5f5', padding: '0 10px' }}
-            />
-            <input
-              type="number"
-              placeholder="Est. value (optional)"
-              value={form.estimatedValue}
-              onChange={(e) => setForm({ ...form, estimatedValue: e.target.value })}
-              style={{ flex: 1, height: 34, borderRadius: 8, border: '1px solid #2a2a2e', background: '#0b0b0d', color: '#f5f5f5', padding: '0 10px' }}
-            />
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Variety</label>
+              <input type="text" placeholder="SAMMAZ 52" value={form.variety} onChange={(e) => update('variety', e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Growing method</label>
+              <select value={form.growingMethod} onChange={(e) => update('growingMethod', e.target.value)} style={{ ...inputStyle, width: '100%' }}>
+                {GROWING_METHODS.map((g) => <option key={g} value={g}>{g}</option>)}
+              </select>
+            </div>
           </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Quantity</label>
+              <input type="number" placeholder="120" value={form.quantity} onChange={(e) => update('quantity', e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Unit</label>
+              <select value={form.unit} onChange={(e) => update('unit', e.target.value)} style={{ ...inputStyle, width: '100%' }}>
+                {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Planting date</label>
+              <input type="date" value={form.plantingDate} onChange={(e) => update('plantingDate', e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Harvest date</label>
+              <input type="date" value={form.harvestDate} onChange={(e) => update('harvestDate', e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Asking price currency</label>
+              <select value={form.askingPriceCurrency} onChange={(e) => update('askingPriceCurrency', e.target.value)} style={{ ...inputStyle, width: '100%' }}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 2 }}>
+              <label style={labelStyle}>Asking price amount</label>
+              <input type="number" placeholder="8500" value={form.askingPriceAmount} onChange={(e) => update('askingPriceAmount', e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Minimum selling price currency</label>
+              <select value={form.minSellingPriceCurrency} onChange={(e) => update('minSellingPriceCurrency', e.target.value)} style={{ ...inputStyle, width: '100%' }}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 2 }}>
+              <label style={labelStyle}>Minimum selling price amount</label>
+              <input type="number" placeholder="7500" value={form.minSellingPriceAmount} onChange={(e) => update('minSellingPriceAmount', e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 20, marginBottom: 14 }}>
+            <label style={{ fontSize: 13, color: '#f5f5f5', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={form.negotiable} onChange={(e) => update('negotiable', e.target.checked)} />
+              Negotiable
+            </label>
+            <label style={{ fontSize: 13, color: '#f5f5f5', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <input type="checkbox" checked={form.bulkDiscountAvailable} onChange={(e) => update('bulkDiscountAvailable', e.target.checked)} />
+              Bulk discount available
+            </label>
+          </div>
+
           <button
             onClick={submitItem}
             disabled={saving}
-            style={{
-              background: '#8a1414',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '8px 16px',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: saving ? 'default' : 'pointer',
-              opacity: saving ? 0.7 : 1,
-            }}
+            style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
           >
             {saving ? 'Saving…' : 'Save item'}
           </button>
@@ -190,26 +275,28 @@ export default function InventoryPage() {
       )}
 
       {items.map((item) => (
-        <div
-          key={item.id}
-          style={{
-            background: '#1f1f23',
-            border: '1px solid #2a2a2e',
-            borderRadius: 12,
-            padding: 16,
-            marginBottom: 12,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{item.name}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
-              {item.category} &middot; {item.quantity} {item.unit}
-            </p>
+        <div key={item.id} style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+                {item.name}{item.variety ? ` · ${item.variety}` : ''}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
+                {item.category} · {item.quantity} {item.unit}{item.growingMethod ? ` · ${item.growingMethod}` : ''}
+              </p>
+            </div>
+            <span style={{ fontSize: 12, color: statusColor(item.status) }}>{item.status.replace('_', ' ')}</span>
           </div>
-          <span style={{ fontSize: 12, color: statusColor(item.status) }}>{item.status.replace('_', ' ')}</span>
+
+          {(item.askingPriceAmount || item.minSellingPriceAmount || item.harvestDate) && (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a2e', fontSize: 12, color: '#9a9a9f' }}>
+              {item.askingPriceAmount && <span style={{ marginRight: 16 }}>Asking: {fmtPrice(item.askingPriceCurrency, item.askingPriceAmount)}</span>}
+              {item.minSellingPriceAmount && <span style={{ marginRight: 16 }}>Min: {fmtPrice(item.minSellingPriceCurrency, item.minSellingPriceAmount)}</span>}
+              {item.negotiable && <span style={{ marginRight: 16, color: '#34c471' }}>Negotiable</span>}
+              {item.bulkDiscountAvailable && <span style={{ color: '#34c471' }}>Bulk discount</span>}
+              {item.harvestDate && <span style={{ display: 'block', marginTop: 4 }}>Harvest: {new Date(item.harvestDate).toLocaleDateString()}</span>}
+            </div>
+          )}
         </div>
       ))}
     </main>
