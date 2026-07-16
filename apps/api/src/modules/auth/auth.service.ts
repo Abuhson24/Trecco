@@ -30,18 +30,20 @@ export interface PublicMember {
   fullName: string;
   email: string;
   phone: string;
+  address: string | null;
   role: string;
   cooperativeId: string;
 }
 
 function toPublicMember(member: {
-  id: string; fullName: string; email: string; phone: string; role: string; cooperativeId: string;
+  id: string; fullName: string; email: string; phone: string; address: string | null; role: string; cooperativeId: string;
 }): PublicMember {
   return {
     id: member.id,
     fullName: member.fullName,
     email: member.email,
     phone: member.phone,
+    address: member.address,
     role: member.role,
     cooperativeId: member.cooperativeId,
   };

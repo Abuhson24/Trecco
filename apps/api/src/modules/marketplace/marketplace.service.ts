@@ -4,6 +4,8 @@ import { PrismaService } from '../../prisma/prisma.service';
 interface DemandDetails {
   cooperativeId?: string | null;
   productName: string;
+  variety?: string | null;
+  description?: string | null;
   quantity: number;
   unit: string;
   pricePerUnit: number;
@@ -45,6 +47,8 @@ export class MarketplaceService {
         offtakerId,
         cooperativeId: input.cooperativeId ?? null,
         productName: input.productName,
+        variety: input.variety ?? null,
+        description: input.description ?? null,
         quantity: input.quantity,
         unit: input.unit,
         pricePerUnit: input.pricePerUnit,
@@ -166,6 +170,8 @@ export class MarketplaceService {
       where: { id: demandId },
       data: {
         productName: input.productName ?? demand.productName,
+        variety: input.variety !== undefined ? input.variety : demand.variety,
+        description: input.description !== undefined ? input.description : demand.description,
         quantity: input.quantity ?? demand.quantity,
         unit: input.unit ?? demand.unit,
         pricePerUnit: input.pricePerUnit ?? demand.pricePerUnit,
