@@ -17,10 +17,12 @@ const LINKS = [
   { href: '/wallet', label: 'Wallet' },
   { href: '/cards', label: 'Cards' },
   { href: '/marketplace', label: 'Marketplace' },
+  { href: '/inventory', label: 'Inventory' },
 ];
 
 const ADMIN_LINKS = [
   { href: '/admin/cards', label: 'Admin - Cards' },
+  { href: '/admin/inventory', label: 'Admin - Inventory' },
 ];
 
 export default function Nav() {
