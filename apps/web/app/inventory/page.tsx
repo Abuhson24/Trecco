@@ -25,6 +25,7 @@ interface InventoryItem {
   bulkDiscountAvailable: boolean;
   minSellingPriceCurrency: string | null;
   minSellingPriceAmount: string | null;
+  imageUrl: string | null;
   createdAt: string;
 }
 
@@ -65,6 +66,8 @@ export default function InventoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     category: 'PRODUCE',
@@ -139,6 +142,42 @@ export default function InventoryPage() {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteItemHandler(itemId: string) {
+    if (!confirm('Delete this item? This cannot be undone.')) return;
+    setDeletingId(itemId);
+    setError(null);
+    try {
+      await api(`/inventory/${itemId}`, { method: 'DELETE' });
+      setItems((prev) => prev.filter((i) => i.id !== itemId));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function uploadImageHandler(itemId: string, file: File) {
+    setUploadingId(itemId);
+    setError(null);
+    try {
+      const token = localStorage.getItem('trecco_token');
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`${API_BASE}/inventory/${itemId}/image`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).message ?? res.statusText);
+      const updated = await res.json();
+      setItems((prev) => prev.map((i) => (i.id === itemId ? updated : i)));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setUploadingId(null);
     }
   }
 
@@ -276,8 +315,17 @@ export default function InventoryPage() {
 
       {items.map((item) => (
         <div key={item.id} style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            {item.imageUrl ? (
+              <img
+                src={`${API_BASE}${item.imageUrl}`}
+                alt={item.name}
+                style={{ width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0 }}
+              />
+            ) : (
+              <div style={{ width: 56, height: 56, borderRadius: 8, background: '#0b0b0d', flexShrink: 0 }} />
+            )}
+            <div style={{ flex: 1 }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
                 {item.name}{item.variety ? ` · ${item.variety}` : ''}
               </p>
@@ -297,6 +345,40 @@ export default function InventoryPage() {
               {item.harvestDate && <span style={{ display: 'block', marginTop: 4 }}>Harvest: {new Date(item.harvestDate).toLocaleDateString()}</span>}
             </div>
           )}
+
+          <div style={{ display: 'flex', gap: 8, marginTop: 12, paddingTop: 12, borderTop: '1px solid #2a2a2e' }}>
+            <label style={{ fontSize: 12, color: '#9a9a9f', cursor: 'pointer' }}>
+              {uploadingId === item.id ? 'Uploading…' : item.imageUrl ? 'Replace photo' : '+ Add photo'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                style={{ display: 'none' }}
+                disabled={uploadingId === item.id}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadImageHandler(item.id, file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+            <button
+              onClick={() => deleteItemHandler(item.id)}
+              disabled={deletingId === item.id}
+              style={{
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: '1px solid #e5484d',
+                color: '#e5484d',
+                borderRadius: 6,
+                padding: '4px 10px',
+                fontSize: 12,
+                cursor: deletingId === item.id ? 'default' : 'pointer',
+                opacity: deletingId === item.id ? 0.6 : 1,
+              }}
+            >
+              {deletingId === item.id ? 'Deleting…' : 'Delete'}
+            </button>
+          </div>
         </div>
       ))}
     </main>
