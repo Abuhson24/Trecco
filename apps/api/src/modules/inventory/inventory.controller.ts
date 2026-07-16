@@ -1,7 +1,58 @@
-import { Controller } from "@nestjs/common";
-import { InventoryService } from "./inventory.service";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { InventoryService } from './inventory.service';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 
-@Controller("inventory")
+@Controller('inventory')
 export class InventoryController {
   constructor(private readonly inventory: InventoryService) {}
+
+  // Member adds their own produce/stock.
+  @UseGuards(JwtAuthGuard)
+  @Post()
+  async createItem(@Req() req: any, @Body() body: any) {
+    return this.inventory.createItem(req.user.memberId, body);
+  }
+
+  // Member lists their own items.
+  @UseGuards(JwtAuthGuard)
+  @Get('mine')
+  async listMine(@Req() req: any) {
+    return this.inventory.listMine(req.user.memberId);
+  }
+
+  // Member edits their own item (ownership checked in the service).
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id')
+  async updateItem(@Req() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.inventory.updateItem(req.user.memberId, id, body);
+  }
+
+  // Member deletes their own item (ownership + linked-offer check in the service).
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  async deleteItem(@Req() req: any, @Param('id') id: string) {
+    return this.inventory.deleteItem(req.user.memberId, id);
+  }
+
+  // Admin-only: feed of everything members have added, across the coop.
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Get('admin/alerts')
+  async listAlertsForAdmin(@Req() req: any) {
+    return this.inventory.listAlertsForAdmin(req.user.cooperativeId);
+  }
+
+  // Member offers an item's excess against an existing open demand.
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/list-to-marketplace/:demandId')
+  async listToMarketplace(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Param('demandId') demandId: string,
+    @Body() body: any,
+  ) {
+    return this.inventory.listToMarketplace(req.user.memberId, id, demandId, body.quantityOffered);
+  }
 }
