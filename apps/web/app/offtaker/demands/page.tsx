@@ -10,6 +10,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000'
 interface Demand {
   id: string;
   productName: string;
+  variety: string | null;
+  description: string | null;
   quantity: string;
   unit: string;
   pricePerUnit: string;
@@ -52,11 +54,15 @@ export default function MyDemandsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     productName: '',
+    variety: '',
+    description: '',
     quantity: '',
     unit: 'bags',
     pricePerUnit: '',
@@ -86,11 +92,15 @@ export default function MyDemandsPage() {
     setEditingId(d.id);
     setForm({
       productName: d.productName,
+      variety: d.variety ?? '',
+      description: d.description ?? '',
       quantity: String(d.quantity),
       unit: d.unit,
       pricePerUnit: String(d.pricePerUnit),
       deadline: d.deadline ? d.deadline.slice(0, 10) : '',
     });
+    setImageFile(null);
+    setImagePreview(d.imageUrl ? `${API_BASE}${d.imageUrl}` : null);
     setShowForm(true);
   }
 
@@ -104,18 +114,26 @@ export default function MyDemandsPage() {
     try {
       const payload = {
         productName: form.productName,
+        variety: form.variety || null,
+        description: form.description || null,
         quantity: Number(form.quantity),
         unit: form.unit,
         pricePerUnit: Number(form.pricePerUnit),
         deadline: form.deadline || null,
       };
+      let savedDemand: Demand;
       if (editingId) {
-        await api(`/marketplace/demands/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        savedDemand = await api(`/marketplace/demands/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
       } else {
-        await api('/marketplace/demands', { method: 'POST', body: JSON.stringify(payload) });
+        savedDemand = await api('/marketplace/demands', { method: 'POST', body: JSON.stringify(payload) });
       }
-      setForm({ productName: '', quantity: '', unit: 'bags', pricePerUnit: '', deadline: '' });
+      if (imageFile) {
+        await uploadImage(savedDemand.id, imageFile);
+      }
+      setForm({ productName: '', variety: '', description: '', quantity: '', unit: 'bags', pricePerUnit: '', deadline: '' });
       setEditingId(null);
+      setImageFile(null);
+      setImagePreview(null);
       setShowForm(false);
       load();
     } catch (e: any) {
@@ -168,16 +186,20 @@ export default function MyDemandsPage() {
   return (
     <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>My demands</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>My Demands</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onClick={() => {
-              if (showForm) setEditingId(null);
+              if (showForm) {
+                setEditingId(null);
+                setImageFile(null);
+                setImagePreview(null);
+              }
               setShowForm(!showForm);
             }}
             style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
           >
-            {showForm ? 'Cancel' : '+ Post demand'}
+            {showForm ? 'Cancel' : '+ Post Demand'}
           </button>
           <button
             onClick={logout}
@@ -212,6 +234,22 @@ export default function MyDemandsPage() {
           </div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Variety (optional)</label>
+              <input type="text" placeholder="e.g. Yellow maize, hybrid" value={form.variety} onChange={(e) => setForm({ ...form, variety: e.target.value })} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelStyle}>Description</label>
+            <textarea
+              placeholder="Describe exactly what you need — quality, grading, packaging, delivery location, or any other details suppliers should know."
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={3}
+              style={{ ...inputStyle, width: '100%', height: 'auto', padding: '8px 10px', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <div style={{ flex: 1 }}>
               <label style={labelStyle}>Quantity needed</label>
               <input type="number" placeholder="500" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
             </div>
@@ -224,12 +262,36 @@ export default function MyDemandsPage() {
               <input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
             </div>
           </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelStyle}>Photo (optional)</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {imagePreview && (
+                <img src={imagePreview} alt="Preview" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #2a2a2e' }} />
+              )}
+              <label style={{ fontSize: 12, color: '#9a9a9f', cursor: 'pointer', border: '1px solid #2a2a2e', borderRadius: 6, padding: '6px 10px' }}>
+                {imageFile ? imageFile.name : imagePreview ? 'Replace photo' : 'Choose photo'}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setImageFile(file);
+                      setImagePreview(URL.createObjectURL(file));
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+          </div>
           <button
             onClick={submitDemand}
             disabled={saving}
             style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}
           >
-            {saving ? 'Saving…' : editingId ? 'Save changes' : 'Post demand'}
+            {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Post Demand'}
           </button>
         </div>
       )}
@@ -242,10 +304,15 @@ export default function MyDemandsPage() {
         <div key={d.id} style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{d.productName}</p>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+                {d.productName}{d.variety ? ` — ${d.variety}` : ''}
+              </p>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
                 {d.quantity} {d.unit} · ₦{Number(d.pricePerUnit).toLocaleString()}/{d.unit} · {d.offers.length} offer{d.offers.length === 1 ? '' : 's'}
               </p>
+              {d.description && (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: '#c4c4c8', maxWidth: 500 }}>{d.description}</p>
+              )}
             </div>
             <span style={{ fontSize: 12, color: statusColor(d.status) }}>{d.status}</span>
           </div>
