@@ -88,6 +88,12 @@ export class InventoryService {
     return { deleted: true };
   }
 
+  async attachImage(memberId: string, itemId: string, imageUrl: string) {
+    const item = await this.prisma.inventoryItem.findUnique({ where: { id: itemId } });
+    if (!item) throw new NotFoundException('Inventory item not found');
+    if (item.memberId !== memberId) throw new ForbiddenException('Not your item');
+    return this.prisma.inventoryItem.update({ where: { id: itemId }, data: { imageUrl } });
+  }
   async listAlertsForAdmin(cooperativeId: string) {
     return this.prisma.inventoryItem.findMany({
       where: { cooperativeId },
