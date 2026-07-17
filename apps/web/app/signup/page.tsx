@@ -6,9 +6,11 @@ import { saveSession } from '../../lib/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -18,18 +20,19 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await fetch(`${API_BASE}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ fullName, email, phone, password }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.message ?? 'Login failed');
+        throw new Error(body.message ?? 'Signup failed');
       }
       const data = await res.json();
       saveSession(data.accessToken, data.member.role, data.member.cooperativeId);
-      router.push(!data.member.cooperativeId ? '/onboarding' : data.member.role === 'COOP_ADMIN' || data.member.role === 'TREMMA_SUPER_ADMIN' ? '/admin/cards' : '/cards');
+      // A brand-new account never has a cooperative yet — always onboard.
+      router.push('/onboarding');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -46,14 +49,16 @@ export default function LoginPage() {
 
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <label style={{ fontSize: 13, color: '#9a9a9f' }}>
+          Full name
+          <input value={fullName} onChange={(e) => setFullName(e.target.value)} required style={inputStyle} />
+        </label>
+        <label style={{ fontSize: 13, color: '#9a9a9f' }}>
           Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={inputStyle}
-          />
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inputStyle} />
+        </label>
+        <label style={{ fontSize: 13, color: '#9a9a9f' }}>
+          Phone
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} required style={inputStyle} />
         </label>
         <label style={{ fontSize: 13, color: '#9a9a9f' }}>
           Password
@@ -81,7 +86,7 @@ export default function LoginPage() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? 'Logging in…' : 'Log in'}
+          {loading ? 'Creating account…' : 'Sign up'}
         </button>
       </form>
     </main>

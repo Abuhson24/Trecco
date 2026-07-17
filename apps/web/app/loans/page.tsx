@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { requireAuth } from '../../lib/auth';
+import { requireCooperative } from '../../lib/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 
@@ -107,7 +107,7 @@ export default function MyLoansPage() {
   }
 
   useEffect(() => {
-    if (!requireAuth(router)) return;
+    if (!requireCooperative(router)) return;
     load();
   }, []);
 
