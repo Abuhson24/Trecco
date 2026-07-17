@@ -32,6 +32,7 @@ const ADMIN_LINKS = [
   { href: '/admin/inventory', label: 'Admin - Inventory' },
   { href: '/admin/marketplace', label: 'Admin - Marketplace' },
   { href: '/admin/loans', label: 'Admin - Loans' },
+  { href: '/admin/settings', label: 'Admin - Settings' },
 ];
 
 export default function Nav() {
