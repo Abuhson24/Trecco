@@ -64,15 +64,22 @@ const inputStyle = {
 
 const labelStyle = { fontSize: 11, color: '#6b6b6b', display: 'block', marginBottom: 4 } as const;
 
+// Simplified to three consistent buckets a member actually cares about:
+// "Loan in progress" (still moving through review/disbursement),
+// "Loan due" (disbursed, actively being repaid, money owed now),
+// "Loan paid" (fully closed). REJECTED stays separate since it's a
+// distinct negative outcome, not part of the three-bucket flow.
+// Keep this exact wording anywhere else a loan status is shown
+// (dashboard summaries, admin views) so the terminology never drifts.
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  SUBMITTED: { label: 'Submitted', color: '#e0a020' },
-  COMMITTEE_VOTING: { label: 'Committee voting', color: '#e0a020' },
-  ADMIN_APPROVAL: { label: 'Awaiting admin approval', color: '#e0a020' },
-  APPROVED: { label: 'Approved', color: '#34c471' },
+  SUBMITTED: { label: 'Loan in progress', color: '#5b9bd5' },
+  COMMITTEE_VOTING: { label: 'Loan in progress', color: '#5b9bd5' },
+  ADMIN_APPROVAL: { label: 'Loan in progress', color: '#5b9bd5' },
+  APPROVED: { label: 'Loan in progress', color: '#5b9bd5' },
+  DISBURSED: { label: 'Loan in progress', color: '#5b9bd5' },
+  REPAYING: { label: 'Loan due', color: '#e0a020' },
+  CLOSED: { label: 'Loan paid', color: '#34c471' },
   REJECTED: { label: 'Rejected', color: '#e5484d' },
-  DISBURSED: { label: 'Disbursed', color: '#34c471' },
-  REPAYING: { label: 'Repaying', color: '#5b9bd5' },
-  CLOSED: { label: 'Closed', color: '#9a9a9f' },
 };
 
 export default function MyLoansPage() {
