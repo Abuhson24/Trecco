@@ -32,6 +32,11 @@ enum Language {
   ARABIC
 }
 
+enum CooperativeStatus {
+  ESTABLISHED // real-world cooperative digitizing an existing membership
+  RECRUITING  // new cooperative started on-platform, actively looking for members
+}
+
 model Cooperative {
   id             String    @id @default(cuid())
   name           String
@@ -40,6 +45,8 @@ model Cooperative {
   loanRatePolicy Decimal   @db.Decimal(5, 2) // interest rate %, set by coop admin, read-only to members
   loanCapPercent Decimal   @default(30.00) @db.Decimal(5, 2) // % of savings a member may borrow
   committeeSize  Int       @default(5)
+  status         CooperativeStatus @default(RECRUITING)
+  joinToken      String    @unique @default(cuid())
   createdAt      DateTime  @default(now())
 
   members         Member[]
@@ -50,8 +57,8 @@ model Cooperative {
 
 model Member {
   id             String    @id @default(cuid())
-  cooperativeId  String
-  cooperative    Cooperative @relation(fields: [cooperativeId], references: [id])
+  cooperativeId  String?
+  cooperative    Cooperative? @relation(fields: [cooperativeId], references: [id])
   role           Role      @default(MEMBER)
   isCommitteeMember Boolean @default(false)
   fullName       String
@@ -326,8 +333,8 @@ enum InventoryStatus {
 
 model InventoryItem {
   id             String   @id @default(cuid())
-  cooperativeId  String
-  cooperative    Cooperative @relation(fields: [cooperativeId], references: [id])
+  cooperativeId  String?
+  cooperative    Cooperative? @relation(fields: [cooperativeId], references: [id])
   memberId       String   // owner — items are added by members, not admins
   member         Member   @relation(fields: [memberId], references: [id])
   name           String
