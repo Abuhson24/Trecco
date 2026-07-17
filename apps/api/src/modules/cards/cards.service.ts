@@ -131,9 +131,12 @@ export class CardsService {
     }
 
     const personalAccount = request.member.personalAccount;
-    const cooperativeAccount = request.member.cooperative.cooperativeAccount;
-    if (!personalAccount || !cooperativeAccount) {
-      throw new BadRequestException('Member or cooperative is missing a provisioned account');
+    // Cards work standalone — a member with no cooperative (or a cooperative
+    // with no funded account yet) still gets charged the fee, it just has no
+    // cooperative-side credit leg. Only PersonalAccount is required here.
+    const cooperativeAccount = request.member.cooperative?.cooperativeAccount ?? null;
+    if (!personalAccount) {
+      throw new BadRequestException('Member is missing a provisioned personal account');
     }
 
     const fee = request.cardType === 'VIRTUAL' ? FEE_VIRTUAL : FEE_PHYSICAL;
@@ -145,7 +148,9 @@ export class CardsService {
       }
 
       await tx.personalAccount.update({ where: { id: personalAccount.id }, data: { balance: { decrement: fee } } });
-      await tx.cooperativeAccount.update({ where: { id: cooperativeAccount.id }, data: { balance: { increment: fee } } });
+      if (cooperativeAccount) {
+        await tx.cooperativeAccount.update({ where: { id: cooperativeAccount.id }, data: { balance: { increment: fee } } });
+      }
 
       const txn = await tx.transaction.create({
         data: {
@@ -155,7 +160,7 @@ export class CardsService {
           reference: `card-fee-${cardRequestId}`,
           method: 'internal',
           personalAccountId: personalAccount.id,
-          cooperativeAccountId: cooperativeAccount.id,
+          cooperativeAccountId: cooperativeAccount?.id ?? null,
           cardRequestId,
         },
       });

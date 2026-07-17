@@ -19,6 +19,9 @@ export class LoansService {
       where: { id: memberId },
       include: { cooperative: true },
     });
+    if (!member.cooperative) {
+      throw new BadRequestException('Join a cooperative before requesting a loan');
+    }
 
     return this.prisma.loan.create({
       data: {
@@ -49,6 +52,7 @@ export class LoansService {
     if (Number(personalAccount.balance) < amount) throw new BadRequestException('Insufficient personal account balance');
 
     const member = await this.prisma.member.findUniqueOrThrow({ where: { id: memberId }, select: { cooperativeId: true } });
+    if (!member.cooperativeId) throw new BadRequestException('Join a cooperative before repaying a loan');
     const cooperativeAccount = await this.prisma.cooperativeAccount.findUnique({ where: { cooperativeId: member.cooperativeId } });
     if (!cooperativeAccount) throw new NotFoundException('No cooperative account provisioned for this cooperative');
 
@@ -136,6 +140,9 @@ export class LoansService {
 
     await this.prisma.loanVote.create({ data: { loanId, voterId, approve } });
 
+    if (!loan.member.cooperative) {
+      throw new BadRequestException('Loan member has no cooperative on record');
+    }
     const committeeSize = loan.member.cooperative.committeeSize;
     const threshold = Math.ceil(committeeSize / 2);
     const allVotes = await this.prisma.loanVote.findMany({ where: { loanId } });
@@ -171,6 +178,9 @@ export class LoansService {
     if (loan.status !== 'ADMIN_APPROVAL') throw new BadRequestException(`Loan is ${loan.status}, not ADMIN_APPROVAL`);
 
     const personalAccount = loan.member.personalAccount;
+    if (!loan.member.cooperative) {
+      throw new BadRequestException('Loan member has no cooperative on record');
+    }
     const cooperativeAccount = loan.member.cooperative.cooperativeAccount;
     if (!personalAccount || !cooperativeAccount) {
       throw new BadRequestException('Member or cooperative is missing a provisioned account');
@@ -237,6 +247,9 @@ export class LoansService {
       throw new BadRequestException('Only a pending manual repayment can be confirmed');
     }
 
+    if (!repayment.loan.member.cooperative) {
+      throw new BadRequestException('Loan member has no cooperative on record');
+    }
     const cooperativeAccount = repayment.loan.member.cooperative.cooperativeAccount;
     if (!cooperativeAccount) throw new NotFoundException('No cooperative account provisioned');
 

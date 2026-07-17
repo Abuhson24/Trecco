@@ -29,9 +29,11 @@ export class WalletService {
       select: { cooperativeId: true },
     });
 
-    const cooperativeAccount = await this.prisma.cooperativeAccount.findUnique({
-      where: { cooperativeId: member.cooperativeId },
-    });
+    const cooperativeAccount = member.cooperativeId
+      ? await this.prisma.cooperativeAccount.findUnique({
+          where: { cooperativeId: member.cooperativeId },
+        })
+      : null;
 
     return {
       personalBalance: personalAccount.balance,
@@ -68,9 +70,11 @@ export class WalletService {
       where: { id: memberId },
       select: { cooperativeId: true },
     });
-    const cooperativeAccount = await this.prisma.cooperativeAccount.findUnique({
-      where: { cooperativeId: member.cooperativeId },
-    });
+    const cooperativeAccount = member.cooperativeId
+      ? await this.prisma.cooperativeAccount.findUnique({
+          where: { cooperativeId: member.cooperativeId },
+        })
+      : null;
     if (!cooperativeAccount) throw new NotFoundException('No cooperative account provisioned for this cooperative');
 
     await this.prisma.$transaction([

@@ -8,10 +8,11 @@ export class AuthController {
 
   @Post('signup')
   async signup(
-    @Body() body: { fullName: string; email: string; phone: string; password: string; cooperativeId: string },
+    @Body() body: { fullName: string; email: string; phone: string; password: string },
   ) {
     return this.auth.signup(body);
   }
+
 
   @Post('login')
   async login(@Body() body: { email: string; password: string }) {
