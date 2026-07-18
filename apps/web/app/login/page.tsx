@@ -69,7 +69,7 @@ export default function LoginPage() {
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 16px' }}>
         <div style={{ width: '100%', maxWidth: 360 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-            <img src="/logo.svg" alt="Trecco" width={36} height={36} style={{ borderRadius: 8 }} />
+            <img src="/logo-icon.png" alt="Trecco" width={36} height={36} style={{ borderRadius: 8 }} />
             <span style={{ fontSize: 20, fontWeight: 600 }}>Trecco</span>
           </div>
 

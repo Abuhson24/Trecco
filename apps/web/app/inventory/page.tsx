@@ -287,12 +287,7 @@ export default function InventoryPage() {
 
       <div className="print-only" style={{ display: 'none', marginBottom: 24, paddingBottom: 16, borderBottom: '2px solid #8a1414' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-          <svg width="40" height="40" viewBox="0 0 100 100">
-            <rect x="10" y="10" width="80" height="80" rx="14" fill="#8a1414" />
-            <circle cx="58" cy="50" r="26" fill="#000" />
-            <path d="M50 20 C50 20, 80 15, 78 45 C76 60, 60 55, 58 48 C56 42, 50 20, 50 20 Z" fill="#000" />
-            <line x1="58" y1="48" x2="58" y2="75" stroke="#8a1414" strokeWidth="4" />
-          </svg>
+          <img src="/logo-icon.png" alt="Trecco" width={40} height={40} style={{ borderRadius: 8 }} />
           <div>
             <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#000' }}>TRECCO</p>
             <p style={{ margin: 0, fontSize: 11, color: '#555' }}>Official Inventory Report</p>
