@@ -16,6 +16,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
@@ -29,6 +30,10 @@ export default function SignupPage() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -136,6 +141,16 @@ export default function SignupPage() {
               <span style={{ display: 'block', fontSize: 11, color: '#6b6b6b', marginTop: 4 }}>
                 At least 8 characters
               </span>
+            </label>
+            <label style={{ fontSize: 13, color: '#9a9a9f' }}>
+              Confirm password
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                style={inputStyle}
+              />
             </label>
             {error && <p style={{ color: '#e5484d', fontSize: 13, margin: 0 }}>{error}</p>}
             <button
