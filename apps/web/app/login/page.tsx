@@ -61,7 +61,7 @@ export default function LoginPage() {
             Built by farmers, for farmers.
           </p>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, margin: '10px 0 0' }}>
-            Savings, loans, and market access for agribusiness cooperatives &mdash; Tremma Agro Limited
+            Savings, loans, and market access for cooperatives. Powered by Tremma Agro Limited.
           </p>
         </div>
       </div>
