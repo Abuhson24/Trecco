@@ -113,7 +113,7 @@ export default function LoginPage() {
                 opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? 'Logging in\u2026' : 'Log in'}
+              {loading ? 'Logging in...' : 'Log in'}
             </button>
           </form>
 
