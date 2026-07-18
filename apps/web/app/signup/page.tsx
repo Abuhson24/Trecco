@@ -1,9 +1,14 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { saveSession } from '../../lib/auth';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
+
+const HERO_SLIDES = [
+  { image: '/images/signup-hero-1.jpg', caption: 'Monitor Your Money like a Boss with Trecco' },
+  { image: '/images/signup-hero-2.jpg', caption: 'Fund, save, and track every transaction in one place' },
+];
 
 export default function SignupPage() {
   const router = useRouter();
@@ -13,6 +18,14 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,25 +53,43 @@ export default function SignupPage() {
 
   return (
     <main style={{ display: 'flex', minHeight: '100vh' }}>
-      <div
-        className="auth-photo-panel"
-        style={{
-          flex: 1,
-          position: 'relative',
-          backgroundImage:
-            'linear-gradient(180deg, rgba(11,11,13,0.15) 0%, rgba(11,11,13,0.9) 100%), url(/images/login-hero.jpg)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundColor: '#1f1f23',
-        }}
-      >
+      <div className="auth-photo-panel" style={{ flex: 1, position: 'relative', overflow: 'hidden', backgroundColor: '#1f1f23' }}>
+        {HERO_SLIDES.map((slide, i) => (
+          <div
+            key={slide.image}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundImage: `linear-gradient(180deg, rgba(11,11,13,0.15) 0%, rgba(11,11,13,0.9) 100%), url(${slide.image})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              opacity: i === slideIndex ? 1 : 0,
+              transition: 'opacity 1s ease-in-out',
+            }}
+          />
+        ))}
+
         <div style={{ position: 'absolute', bottom: 40, left: 40, right: 40 }}>
           <p style={{ color: '#fff', fontSize: 24, fontWeight: 600, margin: 0, lineHeight: 1.3 }}>
-            Your smart companion for cooperative savings and market access.
+            {HERO_SLIDES[slideIndex].caption}
           </p>
           <p style={{ color: 'rgba(255,255,255,0.75)', fontSize: 14, margin: '10px 0 0' }}>
             Join a cooperative or start your own &mdash; Tremma Agro Limited
           </p>
+          <div style={{ display: 'flex', gap: 6, marginTop: 16 }}>
+            {HERO_SLIDES.map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  width: 24,
+                  height: 3,
+                  borderRadius: 2,
+                  background: i === slideIndex ? '#fff' : 'rgba(255,255,255,0.35)',
+                  transition: 'background 0.3s',
+                }}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -69,7 +100,7 @@ export default function SignupPage() {
             <span style={{ fontSize: 20, fontWeight: 600 }}>Trecco</span>
           </div>
 
-          <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Welcome to Trecco</h1>
+          <h1 style={{ fontSize: 22, fontWeight: 600, margin: '0 0 4px' }}>Let's get you started with Trecco</h1>
           <p style={{ fontSize: 13, color: '#9a9a9f', margin: '0 0 24px' }}>
             Create your account to get started
           </p>
