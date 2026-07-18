@@ -71,7 +71,7 @@ export default function Nav() {
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
-        <div style={{ width: 22, height: 22, borderRadius: 6, background: '#8a1414' }} />
+        <img src="/logo.svg" alt="Trecco" width={22} height={22} style={{ borderRadius: 6 }} />
         <span style={{ fontWeight: 600, fontSize: 15 }}>Trecco</span>
       </div>
 

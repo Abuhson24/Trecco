@@ -65,7 +65,7 @@ export default function OnboardingPage() {
   return (
     <main style={{ maxWidth: 400, margin: '80px auto', padding: '0 16px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 8, background: '#8a1414' }} />
+        <img src="/logo.svg" alt="Trecco" width={36} height={36} style={{ borderRadius: 8 }} />
         <span style={{ fontSize: 20, fontWeight: 600 }}>Trecco</span>
       </div>
       <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 24 }}>

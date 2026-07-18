@@ -66,6 +66,12 @@ model Member {
   phone          String    @unique
   address        String?
   passwordHash   String
+  // 6-digit code sent via SMS for password reset, plus its expiry.
+  // Hashed like a password would be overkill for a short-lived code —
+  // stored plain, but always checked alongside expiresAt so a stale or
+  // already-used code can never work.
+  passwordResetCode      String?
+  passwordResetExpiresAt DateTime?
   preferredLanguage Language @default(ENGLISH)
   joinedAt       DateTime  @default(now())
 

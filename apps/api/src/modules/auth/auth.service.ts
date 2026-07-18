@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WalletService } from '../wallet/wallet.service';
+import { TermiiClient } from './termii.client';
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL = '30d';
@@ -59,6 +60,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly wallet: WalletService,
+    private readonly termii: TermiiClient,
   ) {
     const accessSecret = process.env.JWT_ACCESS_SECRET;
     const refreshSecret = process.env.JWT_REFRESH_SECRET;
@@ -142,6 +144,60 @@ export class AuthService {
   // fresh token pair without duplicating the signing logic here.
   async issueTokensFor(member: { id: string; role: string; cooperativeId: string | null }): Promise<TokenPair> {
     return this.issueTokens(member);
+  }
+
+  // Deliberately returns the same generic message whether or not the phone
+  // number exists in the system -- confirming/denying that a phone number
+  // is registered is itself sensitive information (phone enumeration).
+  async forgotPassword(phone: string): Promise<{ message: string }> {
+    const member = await this.prisma.member.findUnique({ where: { phone } });
+
+    if (member) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+      await this.prisma.member.update({
+        where: { id: member.id },
+        data: { passwordResetCode: code, passwordResetExpiresAt: expiresAt },
+      });
+
+      await this.termii.sendSms(
+        phone,
+        `Your Trecco password reset code is ${code}. It expires in 10 minutes. Do not share this code.`,
+      );
+    } else {
+      this.logger.log(`Password reset requested for unregistered phone ${phone} -- no SMS sent`);
+    }
+
+    return { message: 'If that phone number is registered, a reset code has been sent via SMS.' };
+  }
+
+  async resetPassword(phone: string, code: string, newPassword: string): Promise<{ message: string }> {
+    if (newPassword.length < 8) {
+      throw new BadRequestException('Password must be at least 8 characters');
+    }
+
+    const member = await this.prisma.member.findUnique({ where: { phone } });
+    if (
+      !member ||
+      !member.passwordResetCode ||
+      !member.passwordResetExpiresAt ||
+      member.passwordResetCode !== code ||
+      member.passwordResetExpiresAt < new Date()
+    ) {
+      // Same error for "no such phone", "wrong code", and "expired code" --
+      // distinguishing them would help an attacker narrow down valid phone
+      // numbers or brute-force the code with feedback on each guess.
+      throw new UnauthorizedException('Invalid or expired reset code');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.member.update({
+      where: { id: member.id },
+      data: { passwordHash, passwordResetCode: null, passwordResetExpiresAt: null },
+    });
+
+    return { message: 'Password reset successfully. You can now log in with your new password.' };
   }
 
   private async issueTokens(member: { id: string; role: string; cooperativeId: string | null }): Promise<TokenPair> {

@@ -46,49 +46,49 @@ export class CardsController {
   }
 
   @UseGuards(RolesGuard)
-  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Roles('TREMMA_SUPER_ADMIN')
   @Get('admin/requests/pending')
   async pending() {
     return this.cards.pendingForAdmin();
   }
 
   @UseGuards(RolesGuard)
-  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Roles('TREMMA_SUPER_ADMIN')
   @Get('admin/requests/awaiting-dispatch')
   async awaitingDispatch() {
     return this.cards.awaitingDispatchForAdmin();
   }
 
   @UseGuards(RolesGuard)
-  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Roles('TREMMA_SUPER_ADMIN')
   @Post('admin/requests/:id/approve')
   async approve(@Req() req: any, @Param('id') id: string) {
     return this.cards.approve(req.user.memberId, id);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Roles('TREMMA_SUPER_ADMIN')
   @Post('admin/requests/:id/reject')
   async reject(@Req() req: any, @Param('id') id: string, @Body() body: { reason: string }) {
     return this.cards.reject(req.user.memberId, id, body.reason);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Roles('TREMMA_SUPER_ADMIN')
   @Post('admin/requests/:id/retry-issuance')
   async retryIssuance(@Param('id') id: string) {
     return this.cards.issue(id);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Roles('TREMMA_SUPER_ADMIN')
   @Post('admin/requests/:id/dispatch')
   async dispatch(@Req() req: any, @Param('id') id: string, @Body() body: { courier: string; trackingReference: string }) {
     return this.cards.dispatch(req.user.memberId, id, body.courier, body.trackingReference);
   }
 
   @UseGuards(RolesGuard)
-  @Roles('COOP_ADMIN', 'TREMMA_SUPER_ADMIN')
+  @Roles('TREMMA_SUPER_ADMIN')
   @Post('admin/requests/:id/delivered')
   async delivered(@Param('id') id: string) {
     return this.cards.markDelivered(id);

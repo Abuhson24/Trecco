@@ -101,7 +101,7 @@ export default function SignupPage() {
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
         <div style={{ width: '100%', maxWidth: 360 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 8, background: '#8a1414' }} />
+            <img src="/logo.svg" alt="Trecco" width={36} height={36} style={{ borderRadius: 8 }} />
             <span style={{ fontSize: 20, fontWeight: 600 }}>Trecco</span>
           </div>
 

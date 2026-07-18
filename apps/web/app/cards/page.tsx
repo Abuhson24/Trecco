@@ -82,7 +82,8 @@ export default function CardsPage() {
           ...(cardType === 'PHYSICAL' ? { deliveryAddress: address } : {}),
         }),
       });
-      await load();
+      router.push(`/cards/confirmation?type=${cardType}`);
+      return;
     } catch (e: any) {
       setError(e.message);
     } finally {
