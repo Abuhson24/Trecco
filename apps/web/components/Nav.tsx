@@ -28,6 +28,7 @@ const LINKS = [
 const COMMITTEE_LINK = { href: '/admin/loans', label: 'Committee' };
 
 const ADMIN_LINKS = [
+  { href: '/admin/members', label: 'Admin - Members' },
   { href: '/admin/cards', label: 'Admin - Cards' },
   { href: '/admin/inventory', label: 'Admin - Inventory' },
   { href: '/admin/marketplace', label: 'Admin - Marketplace' },
