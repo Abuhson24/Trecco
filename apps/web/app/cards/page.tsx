@@ -1,12 +1,5 @@
 'use client';
 
-// Member flow: request a virtual or physical ATM card. Physical requires a
-// delivery address up front (see prisma/schema.prisma CardRequest — the
-// address is captured once at request time and is never editable after,
-// so there's a clean audit trail of what address a card actually shipped to).
-// Status polling here is intentionally simple (fetch on load); swap for
-// SWR/React Query once the rest of the dashboard picks a data-fetching lib.
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { requireAuth } from '../../lib/auth';
@@ -28,18 +21,32 @@ async function api(path: string, options: RequestInit = {}) {
   return res.json();
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  PENDING_APPROVAL: 'Awaiting admin approval',
-  APPROVED: 'Approved',
-  FEE_DEDUCTED: 'Fee deducted — issuing card',
-  ISSUING: 'Issuing card',
-  ISSUED: 'Card issued',
-  DISPATCHED: 'Out for delivery',
-  DELIVERED: 'Delivered',
-  REJECTED: 'Rejected',
-  FAILED: 'Issuance failed — contact support',
-  CANCELLED: 'Cancelled',
+const STATUS_INFO: Record<string, { label: string; color: string }> = {
+  PENDING_APPROVAL: { label: 'Awaiting admin approval', color: '#e0a020' },
+  APPROVED: { label: 'Approved', color: '#34c471' },
+  FEE_DEDUCTED: { label: 'Fee deducted — issuing card', color: '#e0a020' },
+  ISSUING: { label: 'Issuing card', color: '#e0a020' },
+  ISSUED: { label: 'Card issued', color: '#34c471' },
+  DISPATCHED: { label: 'Out for delivery', color: '#5b9bd5' },
+  DELIVERED: { label: 'Delivered', color: '#34c471' },
+  REJECTED: { label: 'Rejected', color: '#e5484d' },
+  FAILED: { label: 'Issuance failed — contact support', color: '#e5484d' },
+  CANCELLED: { label: 'Cancelled', color: '#9a9a9f' },
 };
+
+const inputStyle = {
+  height: 36,
+  borderRadius: 8,
+  border: '1px solid #2a2a2e',
+  background: '#0b0b0d',
+  color: '#f5f5f5',
+  padding: '0 10px',
+  fontSize: 13,
+  width: '100%',
+  boxSizing: 'border-box',
+} as const;
+
+const labelStyle = { fontSize: 11, color: '#6b6b6b', display: 'block', marginBottom: 4 } as const;
 
 export default function CardsPage() {
   const router = useRouter();
@@ -84,65 +91,160 @@ export default function CardsPage() {
   }
 
   return (
-    <main>
-      <h1>ATM Card</h1>
+    <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
+      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>ATM Card</h1>
+      <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 24 }}>
+        Request a virtual card instantly, or order a physical card for delivery.
+      </p>
 
-      <section>
-        <h2>Request a new card</h2>
-        <label>
-          <input type="radio" checked={cardType === 'VIRTUAL'} onChange={() => setCardType('VIRTUAL')} />
-          Virtual card
-        </label>
-        <label>
-          <input type="radio" checked={cardType === 'PHYSICAL'} onChange={() => setCardType('PHYSICAL')} />
-          Physical card
-        </label>
+      <div
+        style={{
+          position: 'relative',
+          borderRadius: 16,
+          overflow: 'hidden',
+          marginBottom: 28,
+          background: 'linear-gradient(135deg, #2a0d0d 0%, #0b0b0d 60%)',
+          padding: '32px 24px',
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
+        <img
+          src="/trecco-card.jpg"
+          alt="Trecco debit card"
+          style={{
+            maxWidth: 380,
+            width: '100%',
+            height: 'auto',
+            borderRadius: 12,
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+            transform: 'rotate(-3deg)',
+          }}
+        />
+      </div>
+
+      <div style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 24 }}>
+        <p style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 600 }}>Request a new card</p>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          <button
+            onClick={() => setCardType('VIRTUAL')}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: cardType === 'VIRTUAL' ? '1px solid #8a1414' : '1px solid #2a2a2e',
+              background: cardType === 'VIRTUAL' ? 'rgba(138,20,20,0.15)' : 'transparent',
+              color: '#f5f5f5',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Virtual card
+          </button>
+          <button
+            onClick={() => setCardType('PHYSICAL')}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: cardType === 'PHYSICAL' ? '1px solid #8a1414' : '1px solid #2a2a2e',
+              background: cardType === 'PHYSICAL' ? 'rgba(138,20,20,0.15)' : 'transparent',
+              color: '#f5f5f5',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Physical card
+          </button>
+        </div>
 
         {cardType === 'PHYSICAL' && (
-          <fieldset>
-            <legend>Delivery address</legend>
-            <input placeholder="Full name" value={address.fullName}
-              onChange={(e) => setAddress({ ...address, fullName: e.target.value })} />
-            <input placeholder="Phone" value={address.phone}
-              onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
-            <input placeholder="Address line 1" value={address.addressLine1}
-              onChange={(e) => setAddress({ ...address, addressLine1: e.target.value })} />
-            <input placeholder="Address line 2 (optional)" value={address.addressLine2}
-              onChange={(e) => setAddress({ ...address, addressLine2: e.target.value })} />
-            <input placeholder="City" value={address.city}
-              onChange={(e) => setAddress({ ...address, city: e.target.value })} />
-            <input placeholder="State" value={address.state}
-              onChange={(e) => setAddress({ ...address, state: e.target.value })} />
-            <input placeholder="Country" value={address.country}
-              onChange={(e) => setAddress({ ...address, country: e.target.value })} />
-          </fieldset>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            <div>
+              <label style={labelStyle}>Full name</label>
+              <input style={inputStyle} value={address.fullName} onChange={(e) => setAddress({ ...address, fullName: e.target.value })} />
+            </div>
+            <div>
+              <label style={labelStyle}>Phone</label>
+              <input style={inputStyle} value={address.phone} onChange={(e) => setAddress({ ...address, phone: e.target.value })} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Address line 1</label>
+              <input style={inputStyle} value={address.addressLine1} onChange={(e) => setAddress({ ...address, addressLine1: e.target.value })} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Address line 2 (optional)</label>
+              <input style={inputStyle} value={address.addressLine2} onChange={(e) => setAddress({ ...address, addressLine2: e.target.value })} />
+            </div>
+            <div>
+              <label style={labelStyle}>City</label>
+              <input style={inputStyle} value={address.city} onChange={(e) => setAddress({ ...address, city: e.target.value })} />
+            </div>
+            <div>
+              <label style={labelStyle}>State</label>
+              <input style={inputStyle} value={address.state} onChange={(e) => setAddress({ ...address, state: e.target.value })} />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Country</label>
+              <input style={inputStyle} value={address.country} onChange={(e) => setAddress({ ...address, country: e.target.value })} />
+            </div>
+          </div>
         )}
 
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button onClick={submit} disabled={submitting}>
+        {error && <p style={{ color: '#e5484d', fontSize: 13, marginBottom: 10 }}>{error}</p>}
+
+        <button
+          onClick={submit}
+          disabled={submitting}
+          style={{
+            background: '#8a1414',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            padding: '10px 20px',
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: submitting ? 'default' : 'pointer',
+            opacity: submitting ? 0.7 : 1,
+          }}
+        >
           {submitting ? 'Submitting…' : 'Submit request'}
         </button>
-      </section>
+      </div>
 
-      <section>
-        <h2>Your requests</h2>
-        <table>
-          <thead>
-            <tr><th>Type</th><th>Status</th><th>Fee</th><th>Submitted</th><th>Tracking</th></tr>
-          </thead>
-          <tbody>
-            {requests.map((r) => (
-              <tr key={r.id}>
-                <td>{r.cardType}</td>
-                <td>{STATUS_LABEL[r.status] ?? r.status}</td>
-                <td>{r.feeAmount != null ? `₦${r.feeAmount}` : '—'}</td>
-                <td>{new Date(r.submittedAt).toLocaleDateString()}</td>
-                <td>{r.trackingReference ? `${r.courier}: ${r.trackingReference}` : '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
+      <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 12 }}>Your requests</p>
+
+      {requests.length === 0 && !error && (
+        <p style={{ color: '#9a9a9f', fontSize: 13 }}>No card requests yet.</p>
+      )}
+
+      {requests.map((r) => {
+        const info = STATUS_INFO[r.status] ?? { label: r.status, color: '#9a9a9f' };
+        return (
+          <div key={r.id} style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>
+                  {r.cardType === 'VIRTUAL' ? 'Virtual card' : 'Physical card'}
+                </p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
+                  Requested {new Date(r.submittedAt).toLocaleDateString()}
+                  {r.feeAmount != null ? ` · ₦${r.feeAmount} fee` : ''}
+                </p>
+                {r.trackingReference && (
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: '#9a9a9f' }}>
+                    {r.courier}: {r.trackingReference}
+                  </p>
+                )}
+              </div>
+              <span style={{ fontSize: 12, color: info.color, whiteSpace: 'nowrap' }}>{info.label}</span>
+            </div>
+          </div>
+        );
+      })}
     </main>
   );
 }
