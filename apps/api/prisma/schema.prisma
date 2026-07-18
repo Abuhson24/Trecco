@@ -65,6 +65,7 @@ model Member {
   email          String    @unique
   phone          String    @unique
   address        String?
+  bvn            String?  @unique
   passwordHash   String
   // 6-digit code sent via SMS for password reset, plus its expiry.
   // Hashed like a password would be overkill for a short-lived code —
@@ -94,6 +95,7 @@ model PersonalAccount {
   member            Member   @relation(fields: [memberId], references: [id])
   providusAccountNumber String @unique // dedicated virtual account number
   providusAccountRef String  @unique   // Providus's internal reference for this account
+  xpressCustomerId String? @unique     // Xpress Wallet's customer.id — required for every credit/debit/transfer call against this member
   balance           Decimal  @default(0) @db.Decimal(14, 2)
   createdAt         DateTime @default(now())
 
