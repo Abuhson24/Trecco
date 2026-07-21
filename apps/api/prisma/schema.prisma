@@ -66,6 +66,7 @@ model Member {
   phone          String    @unique
   address        String?
   bvn            String?  @unique
+  dateOfBirth    DateTime?
   passwordHash   String
   // 6-digit code sent via SMS for password reset, plus its expiry.
   // Hashed like a password would be overkill for a short-lived code —
@@ -96,6 +97,8 @@ model PersonalAccount {
   providusAccountNumber String @unique // dedicated virtual account number
   providusAccountRef String  @unique   // Providus's internal reference for this account
   xpressCustomerId String? @unique     // Xpress Wallet's customer.id — required for every credit/debit/transfer call against this member
+  bankName          String?  // e.g. "Providus Bank" — from the Xpress Wallet response, shown to the member for funding
+  accountName        String?  // the name Xpress Wallet registered the account under
   balance           Decimal  @default(0) @db.Decimal(14, 2)
   createdAt         DateTime @default(now())
 
@@ -119,6 +122,8 @@ enum TransactionType {
   LOAN_DISBURSEMENT // cooperative account -> personal account
   LOAN_REPAYMENT    // personal account -> cooperative account (confirmed only)
   CARD_ISSUANCE_FEE // personal account -> cooperative account, charged on admin approval of a CardRequest
+  WALLET_TRANSFER   // personal account -> another member's personal account (Trecco-to-Trecco). Two rows per
+                     // transfer share a reference prefix; `method` distinguishes wallet_debit vs wallet_credit.
 }
 
 enum TransactionStatus {

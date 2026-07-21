@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { WalletService } from './wallet.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
@@ -12,6 +12,12 @@ export class WalletController {
     return this.wallet.getBalance(req.user.memberId);
   }
 
+  @Post('setup-identity')
+  async setupWalletIdentity(@Req() req: any, @Body() body: { bvn: string; dateOfBirth: string }) {
+    await this.wallet.setupWalletIdentity(req.user.memberId, body.bvn, body.dateOfBirth);
+    return this.wallet.getBalance(req.user.memberId);
+  }
+
   @Post('move-to-savings')
   async moveToSavings(@Req() req: any, @Body() body: { amount: number }) {
     await this.wallet.moveToSavings(req.user.memberId, body.amount);
@@ -19,7 +25,37 @@ export class WalletController {
   }
 
   @Post('withdraw')
-  async withdraw(@Req() req: any, @Body() body: { amount: number; destinationBankAccount: string }) {
-    return this.wallet.withdraw(req.user.memberId, body.amount, body.destinationBankAccount);
+  async withdraw(
+    @Req() req: any,
+    @Body() body: { amount: number; sortCode: string; accountNumber: string; accountName: string; narration?: string },
+  ) {
+    await this.wallet.withdraw(req.user.memberId, body.amount, body.sortCode, body.accountNumber, body.accountName, body.narration);
+    return this.wallet.getBalance(req.user.memberId);
+  }
+
+  @Get('banks')
+  async bankList() {
+    return this.wallet.bankList();
+  }
+
+  @Get('resolve-account')
+  async resolveAccountName(@Query('sortCode') sortCode: string, @Query('accountNumber') accountNumber: string) {
+    return this.wallet.resolveAccountName(sortCode, accountNumber);
+  }
+
+  @Get('find-recipient')
+  async findRecipient(@Query('contact') contact: string) {
+    return this.wallet.findRecipientByContact(contact);
+  }
+
+  @Post('send-to-trecco')
+  async sendToTrecco(@Req() req: any, @Body() body: { recipientContact: string; amount: number }) {
+    await this.wallet.sendToTrecco(req.user.memberId, body.recipientContact, body.amount);
+    return this.wallet.getBalance(req.user.memberId);
+  }
+
+  @Get('transactions')
+  async listTransactions(@Req() req: any, @Query('page') page?: string, @Query('perPage') perPage?: string) {
+    return this.wallet.listTransactions(req.user.memberId, page ? Number(page) : 1, perPage ? Number(perPage) : 20);
   }
 }

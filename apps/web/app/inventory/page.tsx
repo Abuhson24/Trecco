@@ -302,6 +302,23 @@ export default function InventoryPage() {
         </div>
       </div>
 
+      <div
+        className="no-print"
+        style={{
+          position: 'relative',
+          borderRadius: 16,
+          overflow: 'hidden',
+          marginBottom: 24,
+          background: '#1f1f23',
+        }}
+      >
+        <img
+          src="/trecco-inventory-hero.png"
+          alt="Trecco Inventory"
+          style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }}
+        />
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>My inventory</h1>
         <div style={{ display: 'flex', gap: 8 }}>

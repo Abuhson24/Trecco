@@ -39,7 +39,13 @@ export class XpressWalletClient {
     const res = await fetch(`${this.baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: this.email, password: this.password }),
+      // Xpress Wallet requires email/password base64-encoded in the login
+      // body (confirmed by decoding their own Postman example values) —
+      // sending plain text here causes a misleading "Invalid e-mail" 400.
+      body: JSON.stringify({
+        email: Buffer.from(this.email).toString('base64'),
+        password: Buffer.from(this.password).toString('base64'),
+      }),
     });
 
     if (!res.ok) {

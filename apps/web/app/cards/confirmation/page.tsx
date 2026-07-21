@@ -3,9 +3,10 @@
 // Physical requests get the branded dispatch-rider photo; virtual requests
 // get a simpler on-page message. Read via a query param so a fresh page
 // load (not just client-side state) can still render the right message.
+import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
-export default function CardConfirmationPage() {
+function CardConfirmationContent() {
   const params = useSearchParams();
   const router = useRouter();
   const cardType = params.get('type') === 'PHYSICAL' ? 'PHYSICAL' : 'VIRTUAL';
@@ -77,5 +78,13 @@ export default function CardConfirmationPage() {
         Back to my cards
       </button>
     </main>
+  );
+}
+
+export default function CardConfirmationPage() {
+  return (
+    <Suspense fallback={null}>
+      <CardConfirmationContent />
+    </Suspense>
   );
 }

@@ -190,8 +190,39 @@ export default function MyLoansPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>My Loans</h1>
+      <div
+        style={{
+          position: 'relative',
+          borderRadius: 16,
+          overflow: 'hidden',
+          marginBottom: 24,
+          background: '#1f1f23',
+        }}
+      >
+        <img
+          src="/trecco-loan-hero.jpeg"
+          alt="Trecco Loan"
+          style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(11,11,13,0) 40%, rgba(11,11,13,0.92) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            padding: '20px 24px',
+          }}
+        >
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#fff' }}>My Loans</h1>
+          <p style={{ fontSize: 13, color: '#e5e5e5', margin: '4px 0 0' }}>
+            Get the support you need to grow your business.
+          </p>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
         <button
           onClick={() => setShowForm(!showForm)}
           style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}

@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import Nav from '../components/Nav';
+import { ThemeProvider } from '../lib/theme';
+import './globals.css';
 
 export const metadata = {
   title: 'Trecco',
@@ -9,17 +11,11 @@ export const metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          background: '#0b0b0d',
-          color: '#f5f5f5',
-          fontFamily: 'system-ui, -apple-system, sans-serif',
-          minHeight: '100vh',
-        }}
-      >
-        <Nav />
-        {children}
+      <body>
+        <ThemeProvider>
+          <Nav />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

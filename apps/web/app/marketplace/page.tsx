@@ -118,9 +118,40 @@ export default function MarketplacePage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
-      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Marketplace</h1>
+      <div
+        style={{
+          position: 'relative',
+          borderRadius: 16,
+          overflow: 'hidden',
+          marginBottom: 24,
+          background: '#1f1f23',
+        }}
+      >
+        <img
+          src="/trecco-marketplace-hero.png"
+          alt="Trecco Marketplace"
+          style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(180deg, rgba(11,11,13,0) 40%, rgba(11,11,13,0.92) 100%)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
+            padding: '20px 24px',
+          }}
+        >
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#fff' }}>Marketplace</h1>
+          <p style={{ fontSize: 13, color: '#e5e5e5', margin: '4px 0 0' }}>
+            Good food, great prices, every day &mdash; open demands from verified offtakers.
+          </p>
+        </div>
+      </div>
+
       <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 20 }}>
-        Open demands from verified offtakers. Offer to supply what you have.
+        Offer to supply what you have.
       </p>
 
       <div style={{ display: 'flex', gap: 8, background: '#1f1f23', borderRadius: 10, padding: 3, marginBottom: 20, maxWidth: 320 }}>
