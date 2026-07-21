@@ -6,6 +6,7 @@ import { getToken, getRole, clearSession } from '../lib/auth';
 import { useTheme } from '../lib/theme';
 
 const LINKS = [
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/wallet', label: 'Wallet' },
   { href: '/loans', label: 'Loans' },
   { href: '/cards', label: 'Cards' },

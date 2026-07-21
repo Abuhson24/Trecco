@@ -45,13 +45,7 @@ export default function LoginPage() {
       }
       const data = await res.json();
       saveSession(data.accessToken, data.member.role, data.member.cooperativeId);
-      router.push(
-        !data.member.cooperativeId
-          ? '/onboarding'
-          : data.member.role === 'COOP_ADMIN' || data.member.role === 'TREMMA_SUPER_ADMIN'
-          ? '/admin/cards'
-          : '/wallet'
-      );
+      router.push(!data.member.cooperativeId ? "/onboarding" : "/dashboard");
     } catch (err: any) {
       setError(err.message);
     } finally {
