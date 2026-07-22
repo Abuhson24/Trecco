@@ -44,6 +44,7 @@ model Cooperative {
   focusArea      String? // e.g. "Agribusiness" — platform is not agribusiness-only
   loanRatePolicy Decimal   @db.Decimal(5, 2) // interest rate %, set by coop admin, read-only to members
   loanCapPercent Decimal   @default(30.00) @db.Decimal(5, 2) // % of savings a member may borrow
+  recommendedSavingsTarget Decimal @default(200000.00) @db.Decimal(14, 2)
   committeeSize  Int       @default(5)
   status         CooperativeStatus @default(RECRUITING)
   joinToken      String    @unique @default(cuid())
@@ -75,6 +76,26 @@ model Member {
   passwordResetCode      String?
   passwordResetExpiresAt DateTime?
   preferredLanguage Language @default(ENGLISH)
+
+  // Transaction PIN — a separate 4-6 digit code required before sensitive
+  // money-moving actions (withdraw, send-to-Trecco), independent of the
+  // login password. Hashed the same way as passwordHash.
+  transactionPinHash String?
+
+  // Panic password — a second password a member can enter INSTEAD of their
+  // real one under duress. Login succeeds either way (so nothing looks
+  // different to an onlooker), but panicPasswordHash matching sets a
+  // session-level flag the frontend uses to show a fake near-zero balance
+  // instead of the real one. Real balance/data is never altered.
+  panicPasswordHash String?
+
+  // Soft delete — keeps loan/transaction history and referential integrity
+  // intact (nothing else in the schema has to become nullable), while the
+  // member can no longer log in and drops out of active-member counts.
+  deletedAt DateTime?
+
+  imageUrl String?
+
   joinedAt       DateTime  @default(now())
 
   personalAccount PersonalAccount?
@@ -124,6 +145,8 @@ enum TransactionType {
   CARD_ISSUANCE_FEE // personal account -> cooperative account, charged on admin approval of a CardRequest
   WALLET_TRANSFER   // personal account -> another member's personal account (Trecco-to-Trecco). Two rows per
                      // transfer share a reference prefix; `method` distinguishes wallet_debit vs wallet_credit.
+  AIRTIME_PURCHASE  // personal account -> VTpass airtime top-up
+  DATA_PURCHASE     // personal account -> VTpass data bundle purchase
 }
 
 enum TransactionStatus {

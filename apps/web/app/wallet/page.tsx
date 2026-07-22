@@ -465,6 +465,30 @@ export default function WalletPage() {
             </button>
           </div>
 
+          <a
+            href="/bills"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#1f1f23',
+              border: '1px solid #2a2a2e',
+              borderRadius: 12,
+              padding: '14px 18px',
+              marginTop: 16,
+              textDecoration: 'none',
+              color: '#f5f5f5',
+            }}
+          >
+            <div>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500 }}>Airtime/Data</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9a9a9f' }}>
+                Buy airtime or data for MTN, Glo, Airtel, 9mobile
+              </p>
+            </div>
+            <span style={{ fontSize: 18, color: '#9a9a9f' }}>&rsaquo;</span>
+          </a>
+
           <div style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginTop: 16 }}>
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
               <button
