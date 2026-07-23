@@ -357,10 +357,10 @@ export default function WalletPage() {
               <p style={{ margin: '0 0 12px', fontSize: 11, color: '#9a9a9f' }}>
                 Send a bank transfer to this account — it lands in your balance automatically.
               </p>
-              <div style={{ background: '#0b0b0d', border: '1px solid #2a2a2e', borderRadius: 8, padding: 12, marginBottom: 4 }}>
-                <p style={{ margin: 0, fontSize: 11, color: '#6b6b6b' }}>Account number</p>
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 4 }}>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--text-muted)' }}>Account number</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p style={{ margin: '2px 0 0', fontSize: 18, fontWeight: 600, letterSpacing: 1 }}>{balance.providusAccountNumber}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 18, fontWeight: 600, letterSpacing: 1, color: 'var(--text)' }}>{balance.providusAccountNumber}</p>
                   <button
                     onClick={copyAccountNumber}
                     style={{ background: 'transparent', border: '1px solid #2a2a2e', color: '#9a9a9f', borderRadius: 6, padding: '4px 10px', fontSize: 11, cursor: 'pointer' }}

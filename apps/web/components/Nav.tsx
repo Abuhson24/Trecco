@@ -57,7 +57,8 @@ export default function Nav() {
   function NavLink({ href, label, icon }: { href: string; label: string; icon: string }) {
     const active = pathname === href;
     return (
-      <a
+      
+        <a
         href={href}
         style={{
           display: 'flex',
@@ -68,11 +69,12 @@ export default function Nav() {
           textDecoration: 'none',
           fontSize: 13.5,
           fontWeight: active ? 600 : 400,
-          color: active ? 'var(--text)' : 'var(--text-muted)',
+          color: 'var(--accent)',
+          opacity: active ? 1 : 0.75,
           background: active ? 'var(--surface-raised)' : 'transparent',
         }}
       >
-        <span style={{ width: 18, textAlign: 'center', fontSize: 14, opacity: active ? 1 : 0.7 }}>{icon}</span>
+        <span style={{ width: 18, textAlign: 'center', fontSize: 14 }}>{icon}</span>
         {label}
       </a>
     );
@@ -95,7 +97,7 @@ export default function Nav() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '0 6px', marginBottom: 28 }}>
         <img src="/logo-icon.png" alt="Trecco" width={26} height={26} style={{ borderRadius: 7 }} />
-        <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)' }}>Trecco</span>
+        <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--accent)' }}>Trecco</span>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -112,7 +114,7 @@ export default function Nav() {
 
       {isAdmin && (
         <>
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 0.5, textTransform: 'uppercase', margin: '20px 14px 6px' }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', letterSpacing: 0.5, textTransform: 'uppercase', margin: '20px 14px 6px' }}>
             Admin
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -138,7 +140,7 @@ export default function Nav() {
             gap: 10,
             background: 'transparent',
             border: '1px solid var(--border)',
-            color: 'var(--text-muted)',
+            color: 'var(--accent)',
             borderRadius: 8,
             padding: '8px 14px',
             fontSize: 13,
@@ -154,7 +156,7 @@ export default function Nav() {
           style={{
             background: 'transparent',
             border: '1px solid var(--border)',
-            color: 'var(--text-muted)',
+            color: 'var(--accent)',
             borderRadius: 8,
             padding: '8px 14px',
             fontSize: 13,
