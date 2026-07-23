@@ -4,9 +4,10 @@ import { WalletService } from './wallet.service';
 import { XpressWalletClient } from './xpress-wallet.client';
 import { ProvidusWebhookController } from './providus-webhook.controller';
 import { AuthModule } from '../auth/auth.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [forwardRef(() => AuthModule)],
+  imports: [forwardRef(() => AuthModule), SettingsModule],
   controllers: [WalletController, ProvidusWebhookController],
   providers: [WalletService, XpressWalletClient],
   exports: [WalletService],

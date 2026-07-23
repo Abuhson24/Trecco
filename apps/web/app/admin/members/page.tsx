@@ -72,11 +72,20 @@ export default function AdminMembersPage() {
 
   return (
     <main style={{ maxWidth: 780, margin: '40px auto', padding: '0 16px' }}>
-      <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Members</h1>
-      <p style={{ fontSize: 13, color: '#9a9a9f', margin: '4px 0 20px' }}>
-        Everyone in your cooperative — {members.length} total, {adminCount} admin{adminCount === 1 ? '' : 's'},{' '}
-        {committeeCount} on committee.
-      </p>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
+          borderRadius: 14,
+          padding: '22px 24px',
+          marginBottom: 20,
+        }}
+      >
+        <h1 style={{ fontSize: 21, fontWeight: 700, margin: 0, color: '#fff' }}>Members</h1>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '6px 0 0' }}>
+          Everyone in your cooperative — {members.length} total, {adminCount} admin{adminCount === 1 ? '' : 's'},{' '}
+          {committeeCount} on committee.
+        </p>
+      </div>
 
       {error && <p style={{ color: '#e5484d', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 

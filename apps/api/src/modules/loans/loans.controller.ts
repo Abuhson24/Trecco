@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Req, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { LoansService } from './loans.service';
+import { CreditScoreService } from './credit-score.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -9,7 +10,10 @@ import { loanReceiptMulterOptions } from '../../common/config/multer.config';
 @Controller('loans')
 @UseGuards(JwtAuthGuard)
 export class LoansController {
-  constructor(private readonly loans: LoansService) {}
+  constructor(
+    private readonly loans: LoansService,
+    private readonly creditScore: CreditScoreService,
+  ) {}
 
   @Post('request')
   async request(@Req() req: any, @Body() body: { amountRequested: number; purpose: string; repaymentMonths: number }) {
@@ -19,6 +23,11 @@ export class LoansController {
   @Get('my-loans')
   async myLoans(@Req() req: any) {
     return this.loans.myLoans(req.user.memberId);
+  }
+
+  @Get('credit-score')
+  async getCreditScore(@Req() req: any) {
+    return this.creditScore.getCreditScore(req.user.memberId);
   }
 
   @Post(':id/repay/automated')

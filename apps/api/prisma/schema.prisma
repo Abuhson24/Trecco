@@ -147,6 +147,8 @@ enum TransactionType {
                      // transfer share a reference prefix; `method` distinguishes wallet_debit vs wallet_credit.
   AIRTIME_PURCHASE  // personal account -> VTpass airtime top-up
   DATA_PURCHASE     // personal account -> VTpass data bundle purchase
+  ELECTRICITY_PAYMENT // personal account -> VTpass electricity bill (prepaid/postpaid)
+  EDUCATION_PAYMENT   // personal account -> VTpass education pin (JAMB, etc.)
 }
 
 enum TransactionStatus {

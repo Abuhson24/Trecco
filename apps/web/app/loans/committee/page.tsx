@@ -100,10 +100,19 @@ export default function CommitteeVotingPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
-      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Committee Voting</h1>
-      <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 20 }}>
-        Loans from your cooperative awaiting your vote.
-      </p>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
+          borderRadius: 14,
+          padding: '22px 24px',
+          marginBottom: 20,
+        }}
+      >
+        <h1 style={{ fontSize: 21, fontWeight: 700, margin: 0, color: '#fff' }}>Committee Voting</h1>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '6px 0 0' }}>
+          Loans from your cooperative awaiting your vote.
+        </p>
+      </div>
 
       {notCommittee && (
         <p style={{ color: '#9a9a9f', fontSize: 13 }}>

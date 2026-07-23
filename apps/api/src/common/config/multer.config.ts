@@ -85,3 +85,25 @@ export const loanReceiptMulterOptions = {
     callback(null, true);
   },
 };
+
+export const memberImageMulterOptions = {
+  storage: diskStorage({
+    destination: './uploads/members',
+    filename: (_req, file, callback) => {
+      const ext = extname(file.originalname).toLowerCase();
+      callback(null, `${randomUUID()}${ext}`);
+    },
+  }),
+  limits: {
+    fileSize: MAX_FILE_SIZE_BYTES,
+    files: 1,
+  },
+  fileFilter: (_req: any, file: Express.Multer.File, callback: (error: Error | null, accept: boolean) => void) => {
+    const ext = extname(file.originalname).toLowerCase();
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype) || !ALLOWED_EXTENSIONS.includes(ext)) {
+      callback(new BadRequestException('Only JPEG, PNG, or WEBP images are allowed'), false);
+      return;
+    }
+    callback(null, true);
+  },
+};

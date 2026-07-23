@@ -35,11 +35,12 @@ export interface PublicMember {
   address: string | null;
   role: string;
   cooperativeId: string | null;
+  panicMode: boolean;
 }
 
 export function toPublicMember(member: {
   id: string; fullName: string; email: string; phone: string; address: string | null; role: string; cooperativeId: string | null;
-}): PublicMember {
+}, panicMode = false): PublicMember {
   return {
     id: member.id,
     fullName: member.fullName,
@@ -48,6 +49,7 @@ export function toPublicMember(member: {
     address: member.address,
     role: member.role,
     cooperativeId: member.cooperativeId,
+    panicMode,
   };
 }
 
@@ -108,12 +110,32 @@ export class AuthService {
 
   async login(input: LoginInput): Promise<TokenPair & { member: PublicMember }> {
     const member = await this.prisma.member.findUnique({ where: { email: input.email } });
-    if (!member) throw new UnauthorizedException('Invalid email or password');
+    if (!member || member.deletedAt) throw new UnauthorizedException('Invalid email or password');
 
-    const valid = await bcrypt.compare(input.password, member.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid email or password');
+    const validReal = await bcrypt.compare(input.password, member.passwordHash);
+    if (validReal) {
+      return {
+        ...(await this.issueTokens(member, false)),
+        member: toPublicMember(member, false),
+      };
+    }
 
-    return { ...(await this.issueTokens(member)), member: toPublicMember(member) };
+    // Real password didn't match — check the panic password. If it matches,
+    // this is a duress login: proceed exactly like a normal successful
+    // login (same status code, same response shape) so nothing looks
+    // different to anyone watching, but flag panicMode so wallet/dashboard
+    // reads can substitute fake balances instead of real ones.
+    if (member.panicPasswordHash) {
+      const validPanic = await bcrypt.compare(input.password, member.panicPasswordHash);
+      if (validPanic) {
+        return {
+          ...(await this.issueTokens(member, true)),
+          member: toPublicMember(member, true),
+        };
+      }
+    }
+
+    throw new UnauthorizedException('Invalid email or password');
   }
 
   async refresh(refreshToken: string): Promise<TokenPair> {
@@ -135,15 +157,15 @@ export class AuthService {
     return toPublicMember(member);
   }
 
-  async verifyAccessToken(token: string): Promise<{ sub: string; role: string; cooperativeId: string | null }> {
+  async verifyAccessToken(token: string): Promise<{ sub: string; role: string; cooperativeId: string | null; panicMode: boolean }> {
     return this.accessTokens.verifyAsync(token);
   }
 
   // Public wrapper so other services (e.g. CooperativeService, after a join
   // or create action changes a member's cooperativeId/role) can reissue a
   // fresh token pair without duplicating the signing logic here.
-  async issueTokensFor(member: { id: string; role: string; cooperativeId: string | null }): Promise<TokenPair> {
-    return this.issueTokens(member);
+  async issueTokensFor(member: { id: string; role: string; cooperativeId: string | null }, panicMode = false): Promise<TokenPair> {
+    return this.issueTokens(member, panicMode);
   }
 
   // Deliberately returns the same generic message whether or not the phone
@@ -200,8 +222,8 @@ export class AuthService {
     return { message: 'Password reset successfully. You can now log in with your new password.' };
   }
 
-  private async issueTokens(member: { id: string; role: string; cooperativeId: string | null }): Promise<TokenPair> {
-    const payload = { sub: member.id, role: member.role, cooperativeId: member.cooperativeId };
+  private async issueTokens(member: { id: string; role: string; cooperativeId: string | null }, panicMode = false): Promise<TokenPair> {
+    const payload = { sub: member.id, role: member.role, cooperativeId: member.cooperativeId, panicMode };
     return {
       accessToken: await this.accessTokens.signAsync(payload),
       refreshToken: await this.refreshTokens.signAsync(payload),

@@ -89,7 +89,7 @@ export class BillsService {
     personalAccountId: string,
     amount: number,
     requestId: string,
-    type: 'AIRTIME_PURCHASE' | 'DATA_PURCHASE',
+    type: 'AIRTIME_PURCHASE' | 'DATA_PURCHASE' | 'ELECTRICITY_PAYMENT' | 'EDUCATION_PAYMENT',
     response: { code: string; content?: { transactions?: { status?: string } } },
   ) {
     const status = response.code === '000' ? 'COMPLETED' : 'PENDING';
@@ -116,5 +116,98 @@ export class BillsService {
 
   async requeryTransaction(requestId: string) {
     return this.vtpass.post('/requery', { request_id: requestId });
+  }
+  // --- Electricity ---
+
+  async verifyMeter(serviceId: string, billersCode: string, meterType: 'prepaid' | 'postpaid') {
+    return this.vtpass.post('/merchant-verify', {
+      billersCode,
+      serviceID: serviceId,
+      type: meterType,
+    });
+  }
+
+  async buyElectricity(
+    memberId: string,
+    serviceId: string,
+    billersCode: string,
+    meterType: 'prepaid' | 'postpaid',
+    amount: number,
+    phone: string,
+  ) {
+    if (amount <= 0) throw new BadRequestException('Amount must be positive');
+
+    const personalAccount = await this.prisma.personalAccount.findUnique({ where: { memberId } });
+    if (!personalAccount) throw new NotFoundException('No personal account for this member');
+    if (Number(personalAccount.balance) < amount) {
+      throw new BadRequestException('Insufficient personal account balance');
+    }
+
+    const requestId = this.vtpass.generateRequestId();
+
+    const response = await this.vtpass.post<{
+      code: string;
+      purchased_code?: string;
+      token?: string;
+    }>('/pay', {
+      request_id: requestId,
+      serviceID: serviceId,
+      billersCode,
+      variation_code: meterType,
+      amount,
+      phone,
+    });
+
+    const result = await this.recordPurchase(personalAccount.id, amount, requestId, 'ELECTRICITY_PAYMENT', response);
+    return { ...result, token: response.token ?? response.purchased_code ?? null };
+  }
+
+  // --- Education (JAMB) ---
+
+  async getEducationVariations(serviceId: string) {
+    return this.vtpass.get(`/service-variations?serviceID=${serviceId}`);
+  }
+
+  async verifyEducationProfile(serviceId: string, billersCode: string, variationCode: string) {
+    return this.vtpass.post('/merchant-verify', {
+      billersCode,
+      serviceID: serviceId,
+      type: variationCode,
+    });
+  }
+
+  async buyEducation(
+    memberId: string,
+    serviceId: string,
+    billersCode: string,
+    variationCode: string,
+    amount: number,
+    phone: string,
+  ) {
+    if (amount <= 0) throw new BadRequestException('Amount must be positive');
+
+    const personalAccount = await this.prisma.personalAccount.findUnique({ where: { memberId } });
+    if (!personalAccount) throw new NotFoundException('No personal account for this member');
+    if (Number(personalAccount.balance) < amount) {
+      throw new BadRequestException('Insufficient personal account balance');
+    }
+
+    const requestId = this.vtpass.generateRequestId();
+
+    const response = await this.vtpass.post<{
+      code: string;
+      purchased_code?: string;
+      Pin?: string;
+    }>('/pay', {
+      request_id: requestId,
+      serviceID: serviceId,
+      variation_code: variationCode,
+      billersCode,
+      amount,
+      phone,
+    });
+
+    const result = await this.recordPurchase(personalAccount.id, amount, requestId, 'EDUCATION_PAYMENT', response);
+    return { ...result, pin: response.Pin ?? response.purchased_code ?? null };
   }
 }

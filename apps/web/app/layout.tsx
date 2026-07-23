@@ -13,8 +13,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <ThemeProvider>
-          <Nav />
-          {children}
+          <div style={{ display: 'flex', minHeight: '100vh' }}>
+            <Nav />
+            <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+          </div>
         </ThemeProvider>
       </body>
     </html>

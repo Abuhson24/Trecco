@@ -9,6 +9,11 @@ export class DashboardController {
 
   @Get('summary')
   async summary(@Req() req: any) {
-    return this.dashboard.getSummary(req.user.memberId);
+    return this.dashboard.getSummary(req.user.memberId, req.user.panicMode);
+  }
+
+  @Get('wallet-flow')
+  async walletFlow(@Req() req: any) {
+    return this.dashboard.getWalletFlow(req.user.memberId, req.user.panicMode);
   }
 }

@@ -17,7 +17,7 @@ export default function RootPage() {
       return;
     }
     const role = getRole();
-    router.push(role === 'COOP_ADMIN' || role === 'TREMMA_SUPER_ADMIN' ? '/admin/cards' : '/wallet');
+    router.push('/dashboard');
   }, []);
 
   return null;

@@ -319,31 +319,40 @@ export default function InventoryPage() {
         />
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>My inventory</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={() => window.print()}
-            className="no-print"
-            style={{ background: 'transparent', color: '#9a9a9f', border: '1px solid #2a2a2e', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-          >
-            Print
-          </button>
-          <button
-            onClick={() => {
-              if (showForm) setEditingId(null);
-              setShowForm(!showForm);
-            }}
-            className="no-print"
-            style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-          >
-            {showForm ? 'Cancel' : '+ Add produce'}
-          </button>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
+          borderRadius: 14,
+          padding: '22px 24px',
+          marginBottom: 20,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <h1 style={{ fontSize: 21, fontWeight: 700, margin: 0, color: '#fff' }}>My inventory</h1>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => window.print()}
+              className="no-print"
+              style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            >
+              Print
+            </button>
+            <button
+              onClick={() => {
+                if (showForm) setEditingId(null);
+                setShowForm(!showForm);
+              }}
+              className="no-print"
+              style={{ background: '#fff', color: 'var(--accent)', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              {showForm ? 'Cancel' : '+ Add produce'}
+            </button>
+          </div>
         </div>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: 0 }}>
+          Your own stock and produce. The admin sees a live feed of what you add.
+        </p>
       </div>
-      <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 20 }}>
-        Your own stock and produce. The admin sees a live feed of what you add.
-      </p>
 
       {error && <p style={{ color: '#e5484d', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 

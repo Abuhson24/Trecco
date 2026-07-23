@@ -68,7 +68,7 @@ export default function OnboardingPage() {
         <img src="/logo-icon.png" alt="Trecco" width={36} height={36} style={{ borderRadius: 8 }} />
         <span style={{ fontSize: 20, fontWeight: 600 }}>Trecco</span>
       </div>
-      <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 24 }}>
+      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
         You're not part of a cooperative yet. Join one with a token from your admin, or start your own.
       </p>
 
@@ -160,7 +160,7 @@ function tabStyle(active: boolean): React.CSSProperties {
   };
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 13, color: '#9a9a9f' };
+const labelStyle: React.CSSProperties = { fontSize: 13, color: 'var(--text-muted)' };
 
 const inputStyle: React.CSSProperties = {
   display: 'block',
@@ -168,9 +168,9 @@ const inputStyle: React.CSSProperties = {
   marginTop: 4,
   height: 36,
   borderRadius: 8,
-  border: '1px solid #2a2a2e',
-  background: '#1f1f23',
-  color: '#f5f5f5',
+  border: '1px solid var(--border)',
+  background: 'var(--surface-raised)',
+  color: 'var(--text)',
   padding: '0 10px',
   boxSizing: 'border-box',
 };

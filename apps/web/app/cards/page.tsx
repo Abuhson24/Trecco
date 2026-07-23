@@ -93,10 +93,19 @@ export default function CardsPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
-      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>ATM Card</h1>
-      <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 24 }}>
-        Request a virtual card instantly, or order a physical card for delivery.
-      </p>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
+          borderRadius: 14,
+          padding: '22px 24px',
+          marginBottom: 20,
+        }}
+      >
+        <h1 style={{ fontSize: 21, fontWeight: 700, margin: 0, color: '#fff' }}>ATM Card</h1>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '6px 0 0' }}>
+          Request a virtual card instantly, or order a physical card for delivery.
+        </p>
+      </div>
 
       <div
         style={{
@@ -105,21 +114,20 @@ export default function CardsPage() {
           overflow: 'hidden',
           marginBottom: 28,
           background: 'linear-gradient(135deg, #2a0d0d 0%, #0b0b0d 60%)',
-          padding: '32px 24px',
+          padding: 16,
           display: 'flex',
           justifyContent: 'center',
         }}
       >
         <img
-          src="/trecco-card.jpg"
+          src="/trecco-banner.png"
           alt="Trecco debit card"
           style={{
-            maxWidth: 380,
+            maxWidth: '100%',
             width: '100%',
             height: 'auto',
             borderRadius: 12,
             boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
-            transform: 'rotate(-3deg)',
           }}
         />
       </div>

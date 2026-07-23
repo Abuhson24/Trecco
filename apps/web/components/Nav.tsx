@@ -12,7 +12,7 @@ const LINKS = [
   { href: '/cards', label: 'Cards', icon: '▭' },
   { href: '/marketplace', label: 'Marketplace', icon: '⇄' },
   { href: '/inventory', label: 'Inventory', icon: '▤' },
-  { href: '/bills', label: 'Airtime/Data', icon: '☎' },
+  { href: '/bills', label: 'Airtime/Data/Bills', icon: '☎' },
 ];
 
 const SETTINGS_LINKS = [

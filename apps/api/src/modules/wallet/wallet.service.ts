@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { XpressWalletClient } from './xpress-wallet.client';
 
@@ -13,12 +13,17 @@ import { XpressWalletClient } from './xpress-wallet.client';
  */
 @Injectable()
 export class WalletService {
+  private readonly logger = new Logger(WalletService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly xpressWallet: XpressWalletClient,
   ) {}
 
-  async getBalance(memberId: string) {
+  // panicMode: when true (member logged in with their panic password),
+  // return a believable but fake near-zero balance instead of the real one.
+  // Nothing in the database is touched — this only shapes what this one
+  // response contains.
+  async getBalance(memberId: string, panicMode = false) {
     const personalAccount = await this.prisma.personalAccount.findUnique({
       where: { memberId },
     });
@@ -34,7 +39,7 @@ export class WalletService {
     if (!personalAccount) {
       return {
         personalBalance: 0,
-        cooperativeSavings: cooperativeAccount?.balance ?? 0,
+        cooperativeSavings: panicMode ? 0 : cooperativeAccount?.balance ?? 0,
         providusAccountNumber: null,
         walletProvisioned: false,
         bankName: null,
@@ -42,8 +47,8 @@ export class WalletService {
       };
     }
     return {
-      personalBalance: personalAccount.balance,
-      cooperativeSavings: cooperativeAccount?.balance ?? 0,
+      personalBalance: panicMode ? 0 : personalAccount.balance,
+      cooperativeSavings: panicMode ? 0 : cooperativeAccount?.balance ?? 0,
       providusAccountNumber: personalAccount.providusAccountNumber,
       walletProvisioned: !!personalAccount.xpressCustomerId,
       bankName: personalAccount.bankName,
@@ -168,8 +173,58 @@ export class WalletService {
   // TODO(providus): verify the webhook signature per Providus's docs before
   // trusting the payload. This endpoint is the source of truth for all
   // FUNDING transactions — get this one right first.
-  async handleProvidusWebhook(payload: unknown): Promise<void> {
-    throw new Error('Not implemented — needs Providus API docs');
+  // Xpress Wallet's inbound funding notification. Exact payload shape is
+  // inferred from their transaction records (which consistently use
+  // customerId/source, amount, and reference for a
+  // WALLET_FUNDED_THROUGH_BANK_TRANSFER event) since no official webhook
+  // payload schema was available to confirm against. Deliberately
+  // defensive about field names/nesting, idempotent on reference (a
+  // retried webhook delivery must never double-credit a member), and
+  // silently no-ops on anything unrecognized rather than throwing, so a
+  // malformed or unrelated payload can never crash the endpoint or leave
+  // Xpress Wallet retrying indefinitely.
+  async handleProvidusWebhook(payload: any): Promise<void> {
+    const data = payload?.data ?? payload;
+    const customerId: string | undefined = data?.customerId ?? data?.source ?? data?.wallet?.customerId;
+    const amount = Number(data?.amount);
+    const reference: string =
+      data?.reference ?? data?.transactionReference ?? `xpress-webhook-${Date.now()}`;
+
+    if (!customerId || !amount || amount <= 0) {
+      this.logger.warn(`Ignoring Xpress Wallet webhook — missing customerId/amount: ${JSON.stringify(payload)}`);
+      return;
+    }
+
+    const personalAccount = await this.prisma.personalAccount.findFirst({ where: { xpressCustomerId: customerId } });
+    if (!personalAccount) {
+      this.logger.warn(`Xpress Wallet webhook for unknown customerId ${customerId} — no matching PersonalAccount`);
+      return;
+    }
+
+    const existing = await this.prisma.transaction.findUnique({ where: { reference } });
+    if (existing) {
+      this.logger.log(`Ignoring duplicate webhook delivery for reference ${reference}`);
+      return;
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.personalAccount.update({
+        where: { id: personalAccount.id },
+        data: { balance: { increment: amount } },
+      }),
+      this.prisma.transaction.create({
+        data: {
+          type: 'FUNDING',
+          status: 'COMPLETED',
+          amount,
+          reference,
+          method: 'bank_transfer',
+          personalAccountId: personalAccount.id,
+        },
+      }),
+    ]);
+
+    this.logger.log(`Credited ${amount} to member via customerId ${customerId} (reference ${reference})`);
   }
 
   // Internal transfer: personal account -> cooperative account.

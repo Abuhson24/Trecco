@@ -34,6 +34,17 @@ interface Loan {
   repayments: LoanRepayment[];
 }
 
+interface CreditScoreData {
+  savingsScore: number;
+  walletScore: number;
+  inventoryScore: number;
+  marketScore: number;
+  punctualityScore: number;
+  totalScore: number;
+  rating: string;
+  loanDecision: string;
+}
+
 async function api(path: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('trecco_token') : null;
   const res = await fetch(`${API_BASE}${path}`, {
@@ -97,6 +108,10 @@ export default function MyLoansPage() {
   const [repayFile, setRepayFile] = useState<File | null>(null);
   const [repaySubmitting, setRepaySubmitting] = useState(false);
 
+  const [creditScore, setCreditScore] = useState<CreditScoreData | null>(null);
+  const [creditScoreError, setCreditScoreError] = useState<string | null>(null);
+  const [showScoreInfo, setShowScoreInfo] = useState(false);
+
   async function load() {
     try {
       setLoans(await api('/loans/my-loans'));
@@ -106,9 +121,20 @@ export default function MyLoansPage() {
     }
   }
 
+  async function loadCreditScore() {
+    try {
+      setCreditScore(await api('/loans/credit-score'));
+      setCreditScoreError(null);
+    } catch (e: any) {
+      setCreditScore(null);
+      setCreditScoreError(e.message);
+    }
+  }
+
   useEffect(() => {
     if (!requireCooperative(router)) return;
     load();
+    loadCreditScore();
   }, []);
 
   async function submitLoanRequest() {
@@ -222,7 +248,160 @@ export default function MyLoansPage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+      {creditScore && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Trecco Credit Score</p>
+              <p style={{ margin: '2px 0 0', fontSize: 28, fontWeight: 700, color: 'var(--text)' }}>{creditScore.totalScore}<span style={{ fontSize: 14, color: 'var(--text-muted)' }}>/1000</span></p>
+            </div>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                padding: '4px 12px',
+                borderRadius: 999,
+                background:
+                  creditScore.rating === 'AAA' || creditScore.rating === 'AA'
+                    ? 'rgba(52,196,113,0.15)'
+                    : creditScore.rating === 'A'
+                    ? 'rgba(91,155,213,0.15)'
+                    : creditScore.rating === 'BBB' || creditScore.rating === 'BB'
+                    ? 'rgba(224,160,32,0.15)'
+                    : 'rgba(229,72,77,0.15)',
+                color:
+                  creditScore.rating === 'AAA' || creditScore.rating === 'AA'
+                    ? '#34c471'
+                    : creditScore.rating === 'A'
+                    ? '#5b9bd5'
+                    : creditScore.rating === 'BBB' || creditScore.rating === 'BB'
+                    ? '#e0a020'
+                    : '#e5484d',
+              }}
+            >
+              {creditScore.rating}
+            </span>
+          </div>
+
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#c4c4c8' }}>{creditScore.loanDecision}</p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 10, paddingTop: 12, borderTop: '1px solid #2a2a2e' }}>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: '#6b6b6b' }}>Savings</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 500 }}>{creditScore.savingsScore}/300</p>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: '#6b6b6b' }}>Wallet activity</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 500 }}>{creditScore.walletScore}/200</p>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: '#6b6b6b' }}>Inventory</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 500 }}>{creditScore.inventoryScore}/200</p>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: '#6b6b6b' }}>Marketplace</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 500 }}>{creditScore.marketScore}/200</p>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 10, color: '#6b6b6b' }}>Punctuality</p>
+              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 500 }}>{creditScore.punctualityScore}/100</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {creditScoreError && !creditScore && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+          <p style={{ margin: 0, fontSize: 13, color: '#9a9a9f' }}>{creditScoreError}</p>
+        </div>
+      )}
+
+      <button
+        onClick={() => setShowScoreInfo(!showScoreInfo)}
+        style={{ background: 'none', border: 'none', color: '#9a9a9f', fontSize: 12, cursor: 'pointer', padding: 0, marginBottom: showScoreInfo ? 10 : 20, textDecoration: 'underline' }}
+      >
+        {showScoreInfo ? 'Hide' : 'How is my score calculated?'}
+      </button>
+
+      {showScoreInfo && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+          <p style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600 }}>Trecco Credit Score (0–1000)</p>
+          <p style={{ margin: '0 0 14px', fontSize: 12, color: '#9a9a9f' }}>
+            Your score is built from five things Trecco already tracks for you — not collateral or a bank credit history.
+          </p>
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span>Cooperative savings</span>
+              <span style={{ color: '#9a9a9f' }}>300 pts (30%)</span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b6b6b' }}>
+              How close your savings balance is to the cooperative's recommended target.
+            </p>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span>Wallet activity</span>
+              <span style={{ color: '#9a9a9f' }}>200 pts (20%)</span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b6b6b' }}>
+              How often you use your wallet — deposits, withdrawals, transfers, and payments over the last 6 months.
+            </p>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span>Inventory value</span>
+              <span style={{ color: '#9a9a9f' }}>200 pts (20%)</span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b6b6b' }}>
+              The current value of the produce, seeds, or equipment you have listed in stock.
+            </p>
+          </div>
+
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span>Marketplace performance</span>
+              <span style={{ color: '#9a9a9f' }}>200 pts (20%)</span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b6b6b' }}>
+              How many buyer offers you've completed successfully in the last 6 months, plus repeat buyers.
+            </p>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+              <span>Savings punctuality</span>
+              <span style={{ color: '#9a9a9f' }}>100 pts (10%)</span>
+            </div>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: '#6b6b6b' }}>
+              How many of the last 6 months you saved something, plus a bonus for consecutive months.
+            </p>
+          </div>
+
+          <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, paddingTop: 12, borderTop: '1px solid #2a2a2e' }}>
+            What your rating means
+          </p>
+          <div style={{ fontSize: 11, color: '#9a9a9f', lineHeight: 1.8 }}>
+            <p style={{ margin: 0 }}><span style={{ color: '#34c471', fontWeight: 600 }}>AAA (900–1000)</span> — Premium borrower; lowest interest and highest limits</p>
+            <p style={{ margin: 0 }}><span style={{ color: '#34c471', fontWeight: 600 }}>AA (800–899)</span> — Excellent; fast approval</p>
+            <p style={{ margin: 0 }}><span style={{ color: '#5b9bd5', fontWeight: 600 }}>A (700–799)</span> — Good; standard approval</p>
+            <p style={{ margin: 0 }}><span style={{ color: '#e0a020', fontWeight: 600 }}>BBB (600–699)</span> — Fair; reduced amount or guarantor may be required</p>
+            <p style={{ margin: 0 }}><span style={{ color: '#e0a020', fontWeight: 600 }}>BB (500–599)</span> — Moderate risk; smaller loans only</p>
+            <p style={{ margin: 0 }}><span style={{ color: '#e5484d', fontWeight: 600 }}>B (400–499)</span> — High risk; improvement plan recommended</p>
+            <p style={{ margin: 0 }}><span style={{ color: '#e5484d', fontWeight: 600 }}>Below 400 (C)</span> — Not currently eligible; keep saving and stay active on the platform</p>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 8 }}>
+        <button
+          onClick={loadCreditScore}
+          style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+        >
+          Credit Score
+        </button>
         <button
           onClick={() => setShowForm(!showForm)}
           style={{ background: '#8a1414', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
@@ -237,7 +416,7 @@ export default function MyLoansPage() {
       {error && <p style={{ color: '#e5484d', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 
       {showForm && (
-        <div style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 20 }}>
           <div style={{ marginBottom: 10 }}>
             <label style={labelStyle}>Amount requested (₦)</label>
             <input
@@ -291,7 +470,7 @@ export default function MyLoansPage() {
           : null;
 
         return (
-          <div key={loan.id} style={{ background: '#1f1f23', border: '1px solid #2a2a2e', borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          <div key={loan.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>{formatNaira(loan.amountRequested)} requested</p>

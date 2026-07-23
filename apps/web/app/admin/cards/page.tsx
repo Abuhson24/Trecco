@@ -87,10 +87,19 @@ export default function PendingCardsPage() {
 
   return (
     <main style={{ maxWidth: 720, margin: '40px auto', padding: '0 16px' }}>
-      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 20 }}>Pending virtual cards</h1>
-      <p style={{ fontSize: 13, color: '#9a9a9f', marginBottom: 20 }}>
-        Card requests awaiting admin approval.
-      </p>
+      <div
+        style={{
+          background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
+          borderRadius: 14,
+          padding: '22px 24px',
+          marginBottom: 20,
+        }}
+      >
+        <h1 style={{ fontSize: 21, fontWeight: 700, margin: 0, color: '#fff' }}>Pending virtual cards</h1>
+        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', margin: '6px 0 0' }}>
+          Card requests awaiting admin approval.
+        </p>
+      </div>
 
       {error && <p style={{ color: '#e5484d', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 
